@@ -134,12 +134,21 @@ public sealed class BridgeApplicationTests
 
     private sealed class RecordingRegistrar : IProtocolRegistrar
     {
+        public bool Registered { get; set; } = true;
+
         public void Register(string executablePath)
         {
+            Registered = true;
         }
 
         public void Unregister()
         {
+            Registered = false;
+        }
+
+        public bool IsRegistered(string executablePath)
+        {
+            return Registered;
         }
     }
 }

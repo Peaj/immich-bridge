@@ -6,6 +6,14 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
+    <Version>0.1.0</Version>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+    <Product>Immich Bridge</Product>
+    <Description>Windows helper for Immich workstation actions.</Description>
+    <Authors>Immich Bridge Contributors</Authors>
+    <RepositoryUrl>https://github.com/Peaj/immich-bridge</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/Peaj/immich-bridge</PackageProjectUrl>
   </PropertyGroup>
 
 </Project>

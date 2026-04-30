@@ -12,6 +12,8 @@ public static class Program
             ConsoleBridge.AttachToParentConsole();
         }
 
+        ApplicationConfiguration.Initialize();
+
         var logger = new FileLogger();
         try
         {

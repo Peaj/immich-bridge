@@ -8,6 +8,7 @@ public sealed class BridgeApplication
     private readonly IPlatformLauncher launcher;
     private readonly IProtocolRegistrar registrar;
     private readonly ConfigLoader configLoader;
+    private readonly ConfigService configService;
     private readonly TextWriter output;
     private readonly FileLogger logger;
 
@@ -21,19 +22,43 @@ public sealed class BridgeApplication
         this.launcher = launcher;
         this.registrar = registrar;
         this.configLoader = configLoader;
+        configService = new ConfigService(configLoader.ConfigPath);
         this.output = output;
         this.logger = logger ?? new FileLogger();
     }
 
     public int Run(string[] args)
     {
-        if (args.Length == 0 || IsHelp(args[0]))
+        if (args.Length == 0)
+        {
+            if (configService.NeedsSetup())
+            {
+                ShowSetupWizard();
+                return 0;
+            }
+
+            WriteUsage();
+            return 0;
+        }
+
+        if (IsHelp(args[0]))
         {
             WriteUsage();
-            return args.Length == 0 ? 1 : 0;
+            return 0;
         }
 
         var command = args[0];
+        if (StringComparer.OrdinalIgnoreCase.Equals(command, "--setup"))
+        {
+            ShowSetupWizard();
+            return 0;
+        }
+
+        if (StringComparer.OrdinalIgnoreCase.Equals(command, "--check"))
+        {
+            return RunCheck();
+        }
+
         if (StringComparer.OrdinalIgnoreCase.Equals(command, "--register-protocol"))
         {
             registrar.Register(GetExecutablePath());
@@ -163,10 +188,30 @@ public sealed class BridgeApplication
         output.WriteLine("Usage:");
         output.WriteLine("  ImmichBridge.exe --register-protocol");
         output.WriteLine("  ImmichBridge.exe --unregister-protocol");
+        output.WriteLine("  ImmichBridge.exe --setup");
+        output.WriteLine("  ImmichBridge.exe --check");
         output.WriteLine("  ImmichBridge.exe --map-path <remotePath>");
         output.WriteLine("  ImmichBridge.exe --open-with <remotePath>");
         output.WriteLine("  ImmichBridge.exe \"immich-bridge://reveal?path=<remotePath>\"");
         output.WriteLine("  ImmichBridge.exe \"immich-bridge://open?path=<remotePath>\"");
         output.WriteLine("  ImmichBridge.exe \"immich-bridge://open?app=<appId>&path=<remotePath>\"");
+    }
+
+    private void ShowSetupWizard()
+    {
+        using var form = new SetupWizardForm(configService, registrar, launcher, GetExecutablePath());
+        form.ShowDialog();
+    }
+
+    private int RunCheck()
+    {
+        var check = new SystemCheck(configLoader, registrar, GetExecutablePath());
+        var results = check.Run();
+        foreach (var result in results)
+        {
+            output.WriteLine($"{(result.Passed ? "OK" : "FAIL")} {result.Name}: {result.Message}");
+        }
+
+        return results.All(result => result.Passed) ? 0 : 1;
     }
 }

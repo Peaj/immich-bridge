@@ -29,6 +29,32 @@
       "stopAtEntry": false
     },
     {
+      "name": "Immich Bridge: setup wizard",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/src/ImmichBridge/bin/Debug/net10.0-windows/ImmichBridge.exe",
+      "args": [
+        "--setup"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    },
+    {
+      "name": "Immich Bridge: check",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/src/ImmichBridge/bin/Debug/net10.0-windows/ImmichBridge.exe",
+      "args": [
+        "--check"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    },
+    {
       "name": "Immich Bridge: open with sample path",
       "type": "coreclr",
       "request": "launch",
