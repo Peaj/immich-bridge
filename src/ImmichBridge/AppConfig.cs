@@ -44,7 +44,7 @@ public sealed class BridgeOptions
 
 public sealed class ConfigLoader
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    internal static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
         ReadCommentHandling = JsonCommentHandling.Skip,
@@ -111,6 +111,70 @@ public sealed class ConfigLoader
                 app.Arguments = "\"{file}\"";
             }
         }
+    }
+}
+
+public sealed class ConfigService
+{
+    public string ConfigPath { get; }
+
+    public ConfigService(string? configPath = null)
+    {
+        ConfigPath = configPath ?? BridgePaths.ConfigFile;
+    }
+
+    public bool NeedsSetup()
+    {
+        try
+        {
+            if (!File.Exists(ConfigPath))
+            {
+                return true;
+            }
+
+            var config = new ConfigLoader(ConfigPath).Load();
+            return config.Mappings.Count == 0;
+        }
+        catch
+        {
+            return true;
+        }
+    }
+
+    public BridgeConfig CreateDefaultConfig(string remotePrefix, string localPrefix)
+    {
+        return new BridgeConfig
+        {
+            Mappings =
+            [
+                new PathMapping
+                {
+                    RemotePrefix = remotePrefix.Trim(),
+                    LocalPrefix = localPrefix.Trim()
+                }
+            ],
+            Options = new BridgeOptions
+            {
+                ConfirmBeforeOpeningApps = false,
+                VerifyLocalFileExists = true,
+                LogFile = "%AppData%\\ImmichBridge\\logs\\helper.log"
+            }
+        }.Normalize();
+    }
+
+    public void Save(BridgeConfig config)
+    {
+        config.Normalize();
+        ConfigLoader.Validate(config);
+
+        var directory = Path.GetDirectoryName(ConfigPath);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        var json = JsonSerializer.Serialize(config, ConfigLoader.JsonOptions);
+        File.WriteAllText(ConfigPath, json + Environment.NewLine);
     }
 }
 

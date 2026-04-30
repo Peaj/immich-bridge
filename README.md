@@ -20,9 +20,30 @@ dotnet build .\ImmichBridge.slnx
 dotnet test .\ImmichBridge.slnx
 ```
 
+## Install
+
+Download `ImmichBridge-win-x64-vX.Y.Z.zip` from GitHub Releases, extract it to a stable folder, and run `ImmichBridge.exe`.
+
+On first launch, Immich Bridge opens a setup wizard that:
+
+- creates `%AppData%\ImmichBridge\config.json`;
+- asks for the Immich remote path prefix, for example `/external/fotos`;
+- lets you choose the matching local Windows folder, for example `M:\Fotos`;
+- optionally validates a sample Immich asset path;
+- registers `immich-bridge://` under `HKEY_CURRENT_USER`;
+- points you to the Tampermonkey userscript.
+
+No admin rights are required for protocol registration.
+
 ## Configure
 
-Create `%AppData%\ImmichBridge\config.json` from `examples/config.example.json` and adjust mappings and app paths.
+Normal users should use the first-run wizard instead of editing JSON manually. Rerun setup at any time:
+
+```powershell
+.\ImmichBridge.exe --setup
+```
+
+The internal config file is stored at `%AppData%\ImmichBridge\config.json`:
 
 ```json
 {
@@ -54,6 +75,18 @@ Register the protocol handler:
 dotnet run --project .\src\ImmichBridge -- --register-protocol
 ```
 
+Run the setup wizard:
+
+```powershell
+dotnet run --project .\src\ImmichBridge -- --setup
+```
+
+Check config, mappings, protocol registration, and log path:
+
+```powershell
+dotnet run --project .\src\ImmichBridge -- --check
+```
+
 Validate path mapping without launching anything:
 
 ```powershell
@@ -83,6 +116,10 @@ immich-bridge://open?app=photoshop&path=%2Fmnt%2Fimmich-external%2Fphotos%2F2024
 ```
 
 Install `userscript/immich-bridge.user.js` in Tampermonkey. On Immich asset detail pages, it injects an Immich Bridge icon into the asset toolbar, opens a small action menu, calls `GET /api/assets/{id}` with the current browser session, reads `originalPath`, and launches `immich-bridge://` URLs. The default `Open with...` action uses Windows' native app picker, so it does not need app ids hardcoded in the userscript.
+
+## Releases
+
+Immich Bridge uses semantic versioning and GitHub Releases. Release tags use `vX.Y.Z`; the release workflow verifies that the tag, app version, and userscript version match. See `docs/release.md` for the release process.
 
 ## Security Model
 

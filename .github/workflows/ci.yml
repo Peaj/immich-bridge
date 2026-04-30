@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-test:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Restore
+        run: dotnet restore .\ImmichBridge.slnx
+
+      - name: Build
+        run: dotnet build .\ImmichBridge.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test .\ImmichBridge.slnx --configuration Release --no-build
+
+      - name: Check userscript syntax
+        run: node --check .\userscript\immich-bridge.user.js

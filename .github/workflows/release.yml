@@ -1,0 +1,95 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify release versions
+        shell: pwsh
+        run: |
+          [xml]$project = Get-Content .\src\ImmichBridge\ImmichBridge.csproj
+          $projectVersion = $project.Project.PropertyGroup.Version
+          $tagVersion = "${{ github.ref_name }}".TrimStart("v")
+          $userscriptVersion = (Select-String -Path .\userscript\immich-bridge.user.js -Pattern '^// @version\s+(.+)$').Matches[0].Groups[1].Value.Trim()
+
+          if ($projectVersion -ne $tagVersion) {
+            throw "Tag version $tagVersion does not match project version $projectVersion."
+          }
+
+          if ($userscriptVersion -ne $tagVersion) {
+            throw "Tag version $tagVersion does not match userscript version $userscriptVersion."
+          }
+
+      - name: Restore
+        run: dotnet restore .\ImmichBridge.slnx
+
+      - name: Build
+        run: dotnet build .\ImmichBridge.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test .\ImmichBridge.slnx --configuration Release --no-build
+
+      - name: Check userscript syntax
+        run: node --check .\userscript\immich-bridge.user.js
+
+      - name: Publish win-x64
+        run: >
+          dotnet publish .\src\ImmichBridge\ImmichBridge.csproj
+          --configuration Release
+          --runtime win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:DebugType=embedded
+          --output .\artifacts\ImmichBridge-win-x64
+
+      - name: Add release support files
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force .\artifacts\ImmichBridge-win-x64\userscript | Out-Null
+          Copy-Item .\userscript\immich-bridge.user.js .\artifacts\ImmichBridge-win-x64\userscript\immich-bridge.user.js
+          Copy-Item .\README.md .\artifacts\ImmichBridge-win-x64\README.md
+          Copy-Item .\CHANGELOG.md .\artifacts\ImmichBridge-win-x64\CHANGELOG.md
+
+      - name: Package release artifacts
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}"
+          Compress-Archive -Path .\artifacts\ImmichBridge-win-x64\* -DestinationPath ".\artifacts\ImmichBridge-win-x64-$version.zip" -Force
+          Copy-Item .\userscript\immich-bridge.user.js ".\artifacts\immich-bridge-$version.user.js"
+          Get-ChildItem .\artifacts -File |
+            Where-Object { $_.Name -like "*.zip" -or $_.Name -like "*.user.js" } |
+            Get-FileHash -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash.ToLowerInvariant())  $(Split-Path $_.Path -Leaf)" } |
+            Set-Content .\artifacts\SHA256SUMS.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: CHANGELOG.md
+          files: |
+            artifacts/ImmichBridge-win-x64-${{ github.ref_name }}.zip
+            artifacts/immich-bridge-${{ github.ref_name }}.user.js
+            artifacts/SHA256SUMS.txt

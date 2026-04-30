@@ -7,6 +7,8 @@ public interface IProtocolRegistrar
     void Register(string executablePath);
 
     void Unregister();
+
+    bool IsRegistered(string executablePath);
 }
 
 public sealed class WindowsProtocolRegistrar : IProtocolRegistrar
@@ -30,6 +32,13 @@ public sealed class WindowsProtocolRegistrar : IProtocolRegistrar
     public void Unregister()
     {
         Registry.CurrentUser.DeleteSubKeyTree(RegistryPath, false);
+    }
+
+    public bool IsRegistered(string executablePath)
+    {
+        using var commandKey = Registry.CurrentUser.OpenSubKey($@"{RegistryPath}\shell\open\command", false);
+        var command = commandKey?.GetValue(null) as string;
+        return string.Equals(command, BuildCommand(executablePath), StringComparison.OrdinalIgnoreCase);
     }
 
     public static string BuildCommand(string executablePath)

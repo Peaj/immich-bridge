@@ -45,6 +45,32 @@
       "problemMatcher": "$msCompile"
     },
     {
+      "label": "run: setup wizard",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/src/ImmichBridge",
+        "--",
+        "--setup"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "run: check",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/src/ImmichBridge",
+        "--",
+        "--check"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
       "label": "run: map sample path",
       "type": "process",
       "command": "dotnet",
