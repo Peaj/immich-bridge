@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Immich Bridge
 // @namespace    https://github.com/local/immich-bridge
-// @version      0.1.0
+// @version      0.2.0
 // @description  Adds Immich Bridge local workstation actions to Immich asset detail pages.
 // @match        *://*/*
 // @grant        none
@@ -11,8 +11,13 @@
   'use strict';
 
   const protocol = 'immich-bridge';
-  const toolbarId = 'immich-bridge-toolbar';
+  const toolbarHostId = 'immich-bridge-toolbar-host';
+  const menuId = 'immich-bridge-menu';
   const assetApiPrefix = '/api/assets/';
+  const actions = [
+    { label: 'Reveal in Explorer', action: 'reveal', icon: 'folder' },
+    { label: 'Open in Photoshop', action: 'open', appId: 'photoshop', icon: 'app' }
+  ];
   let lastAssetId = null;
   let cachedAsset = null;
 
@@ -72,79 +77,182 @@
     window.alert(`Immich Bridge: ${error.message || error}`);
   }
 
-  function createButton(label, onClick) {
+  function createSvgIcon(kind, size) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', String(size));
+    svg.setAttribute('height', String(size));
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('stroke', 'transparent');
+    svg.setAttribute('stroke-width', '2');
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-hidden', 'true');
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('fill', 'currentColor');
+    path.setAttribute('d', kind === 'folder'
+      ? 'M10,4L12,6H20A2,2 0 0,1 22,8V18A2,2 0 0,1 20,20H4A2,2 0 0,1 2,18V6A2,2 0 0,1 4,4H10M4,8V18H20V8H4Z'
+      : 'M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3H14M19,19H5V5H12V3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z');
+    svg.appendChild(path);
+    return svg;
+  }
+
+  function createToolbarButton() {
     const button = document.createElement('button');
+    button.dataset.buttonRoot = 'true';
     button.type = 'button';
-    button.textContent = label;
-    button.style.cssText = [
-      'background:#2563eb',
-      'border:1px solid #1d4ed8',
-      'border-radius:6px',
-      'color:#fff',
-      'cursor:pointer',
-      'font:500 13px system-ui,sans-serif',
-      'line-height:1',
-      'padding:8px 10px',
-      'white-space:nowrap'
-    ].join(';');
-    button.addEventListener('click', async () => {
-      try {
-        await onClick();
-      } catch (error) {
-        showButtonError(error);
-      }
+    button.setAttribute('aria-label', 'Immich Bridge');
+    button.setAttribute('aria-haspopup', 'true');
+    button.setAttribute('aria-controls', menuId);
+    button.setAttribute('aria-expanded', 'false');
+    button.title = 'Immich Bridge';
+    button.className = 'flex items-center justify-center gap-1 font-medium outline-offset-2 transition-colors focus-visible:outline-2 cursor-pointer rounded-full text-base h-10 w-10 outline-dark text-dark not-disabled:hover:bg-light-100';
+    button.appendChild(createSvgIcon('app', '60%'));
+    button.addEventListener('click', event => {
+      event.stopPropagation();
+      toggleMenu(button);
     });
     return button;
   }
 
-  function removeToolbar() {
-    document.getElementById(toolbarId)?.remove();
+  function createMenuItem(item) {
+    const menuItem = document.createElement('button');
+    menuItem.type = 'button';
+    menuItem.setAttribute('role', 'menuitem');
+    menuItem.style.cssText = [
+      'display:flex',
+      'align-items:center',
+      'gap:10px',
+      'width:100%',
+      'border:0',
+      'background:transparent',
+      'color:#111827',
+      'cursor:pointer',
+      'font:500 14px system-ui,sans-serif',
+      'padding:13px 16px',
+      'text-align:left',
+      'white-space:nowrap'
+    ].join(';');
+    menuItem.append(createSvgIcon(item.icon, 18), document.createTextNode(item.label));
+    menuItem.addEventListener('mouseenter', () => {
+      menuItem.style.background = '#e5e7eb';
+    });
+    menuItem.addEventListener('mouseleave', () => {
+      menuItem.style.background = 'transparent';
+    });
+    menuItem.addEventListener('click', async event => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeMenu();
+      try {
+        await launch(item.action, item.appId);
+      } catch (error) {
+        showButtonError(error);
+      }
+    });
+    return menuItem;
+  }
+
+  function createMenu(button) {
+    const menu = document.createElement('div');
+    menu.id = menuId;
+    menu.setAttribute('role', 'menu');
+    menu.setAttribute('aria-labelledby', button.id);
+    menu.style.cssText = [
+      'position:fixed',
+      'z-index:99999',
+      'min-width:220px',
+      'overflow:hidden',
+      'border-radius:8px',
+      'background:#f1f5f9',
+      'box-shadow:0 10px 24px rgba(0,0,0,.28)',
+      'padding:4px 0'
+    ].join(';');
+    actions.forEach(action => menu.appendChild(createMenuItem(action)));
+    return menu;
+  }
+
+  function toggleMenu(button) {
+    const existing = document.getElementById(menuId);
+    if (existing) {
+      closeMenu();
+      return;
+    }
+
+    const menu = createMenu(button);
+    document.body.appendChild(menu);
+    positionMenu(button, menu);
+    button.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeMenu() {
+    document.getElementById(menuId)?.remove();
+    document.querySelector(`#${toolbarHostId} button`)?.setAttribute('aria-expanded', 'false');
+  }
+
+  function positionMenu(button, menu) {
+    const margin = 8;
+    const rect = button.getBoundingClientRect();
+    const menuWidth = menu.offsetWidth || 220;
+    const left = Math.max(margin, Math.min(rect.left, window.innerWidth - menuWidth - margin));
+    const top = Math.min(rect.bottom + margin, window.innerHeight - menu.offsetHeight - margin);
+    menu.style.left = `${left}px`;
+    menu.style.top = `${Math.max(margin, top)}px`;
+  }
+
+  function removeBridgeUi() {
+    document.getElementById(toolbarHostId)?.remove();
+    closeMenu();
     lastAssetId = null;
     cachedAsset = null;
   }
 
-  function ensureToolbar() {
+  function findInsertionPoint() {
+    const shareButton = document.querySelector('button[aria-label="Share"]');
+    if (shareButton && shareButton.parentElement) {
+      return { parent: shareButton.parentElement, before: shareButton };
+    }
+
+    const moreButton = document.querySelector('button[aria-label="More"][aria-haspopup="true"]');
+    const moreWrapper = moreButton?.closest('div');
+    if (moreWrapper && moreWrapper.parentElement) {
+      return { parent: moreWrapper.parentElement, before: moreWrapper };
+    }
+
+    return null;
+  }
+
+  function ensureToolbarButton() {
     const assetId = extractAssetIdFromUrl();
     if (!assetId) {
-      removeToolbar();
+      removeBridgeUi();
       return;
     }
 
-    const existing = document.getElementById(toolbarId);
+    const insertionPoint = findInsertionPoint();
+    if (!insertionPoint) {
+      return;
+    }
+
+    const existing = document.getElementById(toolbarHostId);
     if (existing && existing.dataset.assetId === assetId) {
       return;
     }
 
     existing?.remove();
 
-    const toolbar = document.createElement('div');
-    toolbar.id = toolbarId;
-    toolbar.dataset.assetId = assetId;
-    toolbar.style.cssText = [
-      'position:fixed',
-      'right:16px',
-      'top:72px',
-      'z-index:99999',
-      'display:flex',
-      'gap:8px',
-      'align-items:center',
-      'background:rgba(17,24,39,.92)',
-      'border:1px solid rgba(255,255,255,.16)',
-      'border-radius:8px',
-      'box-shadow:0 8px 24px rgba(0,0,0,.22)',
-      'padding:8px'
-    ].join(';');
+    const host = document.createElement('div');
+    host.id = toolbarHostId;
+    host.dataset.assetId = assetId;
+    host.style.cssText = 'display:flex;align-items:center;justify-content:center;';
 
-    toolbar.append(
-      createButton('Reveal in Explorer', () => launch('reveal')),
-      createButton('Open in Photoshop', () => launch('open', 'photoshop'))
-    );
-
-    document.body.appendChild(toolbar);
+    const button = createToolbarButton();
+    button.id = `${toolbarHostId}-button`;
+    host.appendChild(button);
+    insertionPoint.parent.insertBefore(host, insertionPoint.before);
   }
 
   function scheduleToolbarRefresh() {
-    window.setTimeout(ensureToolbar, 100);
+    window.setTimeout(ensureToolbarButton, 100);
   }
 
   for (const methodName of ['pushState', 'replaceState']) {
@@ -157,6 +265,14 @@
   }
 
   window.addEventListener('popstate', scheduleToolbarRefresh);
+  window.addEventListener('resize', closeMenu);
+  window.addEventListener('scroll', closeMenu, true);
+  window.addEventListener('click', closeMenu);
+  window.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+      closeMenu();
+    }
+  });
   new MutationObserver(scheduleToolbarRefresh).observe(document.documentElement, { childList: true, subtree: true });
   scheduleToolbarRefresh();
 })();

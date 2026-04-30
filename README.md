@@ -66,7 +66,7 @@ immich-bridge://reveal?path=%2Fmnt%2Fimmich-external%2Fphotos%2F2024%2Fimg.jpg
 immich-bridge://open?app=photoshop&path=%2Fmnt%2Fimmich-external%2Fphotos%2F2024%2Fimg.jpg
 ```
 
-Install `userscript/immich-bridge.user.js` in Tampermonkey. On Immich asset detail pages, it finds the asset id from the URL, calls `GET /api/assets/{id}` with the current browser session, reads `originalPath`, and launches `immich-bridge://` URLs.
+Install `userscript/immich-bridge.user.js` in Tampermonkey. On Immich asset detail pages, it injects an Immich Bridge icon into the asset toolbar, opens a small action menu, calls `GET /api/assets/{id}` with the current browser session, reads `originalPath`, and launches `immich-bridge://` URLs.
 
 ## Security Model
 
