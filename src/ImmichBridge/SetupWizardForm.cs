@@ -19,6 +19,8 @@ public sealed class SetupWizardForm : Form
     private readonly TextBox samplePathBox = new();
     private readonly Label validationLabel = new();
     private readonly Label protocolLabel = new();
+    private readonly Button testRevealButton = new();
+    private string? validatedLocalSamplePath;
     private int pageIndex;
 
     public SetupWizardForm(
@@ -61,20 +63,21 @@ public sealed class SetupWizardForm : Form
 
     private Panel CreateWelcomePage()
     {
-        var page = CreatePage("Welcome to Immich Bridge");
-        page.Controls.Add(CreateBodyLabel(
-            "This setup creates your local path mapping, registers the immich-bridge:// protocol for your Windows account, and points you to the Tampermonkey userscript.\n\nNo admin rights are required because protocol registration uses HKEY_CURRENT_USER."));
-        return page;
+        var content = CreateContentLayout("Welcome to Immich Bridge");
+        content.Controls.Add(CreateBodyLabel(
+            "Immich Bridge connects your Immich web app to files on this Windows computer.\n\nAfter setup, Immich gets a small toolbar button for local actions like revealing the original file in Explorer or opening it with a desktop app. The setup only needs to know how Immich's server paths map to your Windows folders."));
+        return CreatePage(content);
     }
 
     private Panel CreateMappingPage()
     {
-        var page = CreatePage("Path Mapping");
+        var content = CreateContentLayout("Path Mapping");
         var body = CreateBodyLabel("Enter the Immich path prefix exactly as Immich reports it, then choose the matching local Windows folder.");
-        body.Dock = DockStyle.Top;
 
         remotePrefixBox.Text = "/external/fotos";
+        remotePrefixBox.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         localPrefixBox.ReadOnly = true;
+        localPrefixBox.Anchor = AnchorStyles.Left | AnchorStyles.Right;
 
         var browseButton = new Button { Text = "Browse...", AutoSize = true };
         browseButton.Click += (_, _) =>
@@ -102,6 +105,8 @@ public sealed class SetupWizardForm : Form
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 130));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.Controls.Add(new Label { Text = "Immich prefix", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 0);
         layout.Controls.Add(remotePrefixBox, 1, 0);
         layout.SetColumnSpan(remotePrefixBox, 2);
@@ -109,76 +114,75 @@ public sealed class SetupWizardForm : Form
         layout.Controls.Add(localPrefixBox, 1, 1);
         layout.Controls.Add(browseButton, 2, 1);
 
-        page.Controls.Add(layout);
-        page.Controls.Add(body);
-        return page;
+        content.Controls.Add(body);
+        content.Controls.Add(layout);
+        return CreatePage(content);
     }
 
     private Panel CreateValidationPage()
     {
-        var page = CreatePage("Validate Mapping");
+        var content = CreateContentLayout("Validate Mapping");
         var body = CreateBodyLabel("Optionally paste a full Immich asset path to verify it maps to the expected local file.");
-        body.Dock = DockStyle.Top;
         samplePathBox.PlaceholderText = "/external/fotos/album/photo.jpg";
+        samplePathBox.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+        samplePathBox.TextChanged += (_, _) => ResetSampleValidation();
 
         var testButton = new Button { Text = "Test Mapping", AutoSize = true };
         testButton.Click += (_, _) => ValidateSamplePath();
+
+        testRevealButton.Text = "Test Reveal";
+        testRevealButton.AutoSize = true;
+        testRevealButton.Enabled = false;
+        testRevealButton.Click += (_, _) => TestReveal();
 
         var layout = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
             AutoSize = true,
-            ColumnCount = 2,
+            ColumnCount = 3,
             RowCount = 3,
             Padding = new Padding(0, 18, 0, 0)
         };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.Controls.Add(samplePathBox, 0, 0);
         layout.Controls.Add(testButton, 1, 0);
-        layout.SetColumnSpan(validationLabel, 2);
+        layout.Controls.Add(testRevealButton, 2, 0);
+        validationLabel.AutoSize = true;
+        validationLabel.MaximumSize = new Size(640, 0);
+        validationLabel.Padding = new Padding(0, 10, 0, 0);
+        layout.SetColumnSpan(validationLabel, 3);
         layout.Controls.Add(validationLabel, 0, 1);
 
-        page.Controls.Add(layout);
-        page.Controls.Add(body);
-        return page;
+        content.Controls.Add(body);
+        content.Controls.Add(layout);
+        return CreatePage(content);
     }
 
     private Panel CreateProtocolPage()
     {
-        var page = CreatePage("Protocol Registration");
+        var content = CreateContentLayout("Browser Link");
         protocolLabel.AutoSize = true;
         protocolLabel.MaximumSize = new Size(640, 0);
-        protocolLabel.Text = "Setup will register immich-bridge:// for your Windows user account.";
-        page.Controls.Add(protocolLabel);
-        return page;
+        protocolLabel.Text = "Immich Bridge will register its local browser link so clicks from Immich can be handed to this app.\n\nThis is registered only for your Windows user account and does not require administrator rights.";
+        content.Controls.Add(protocolLabel);
+        return CreatePage(content);
     }
 
     private Panel CreateFinishPage()
     {
-        var page = CreatePage("Ready to Use");
+        var content = CreateContentLayout("Ready to Use");
         var body = CreateBodyLabel(
-            "Install or update userscript/immich-bridge.user.js in Tampermonkey, then refresh Immich.\n\nUse the Immich Bridge toolbar button on asset pages to reveal files or open Windows' Open With dialog.");
-        body.Dock = DockStyle.Top;
+            "Install or update the Tampermonkey userscript, then refresh Immich.\n\nUse the Immich Bridge toolbar button on asset pages to reveal files or open Windows' Open With dialog.");
 
-        var openUserscriptButton = new Button { Text = "Open userscript folder", AutoSize = true };
+        var openUserscriptButton = new Button { Text = "Open userscript", AutoSize = true };
         openUserscriptButton.Click += (_, _) =>
         {
-            var userscriptPath = Path.Combine(AppContext.BaseDirectory, "userscript");
-            if (!Directory.Exists(userscriptPath))
-            {
-                userscriptPath = AppContext.BaseDirectory;
-            }
-
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = userscriptPath,
-                UseShellExecute = true
-            });
+            OpenUserscript();
         };
-
-        var testRevealButton = new Button { Text = "Test Reveal", AutoSize = true };
-        testRevealButton.Click += (_, _) => TestReveal();
 
         var flow = new FlowLayoutPanel
         {
@@ -187,25 +191,44 @@ public sealed class SetupWizardForm : Form
             Padding = new Padding(0, 18, 0, 0)
         };
         flow.Controls.Add(openUserscriptButton);
-        flow.Controls.Add(testRevealButton);
 
-        page.Controls.Add(flow);
-        page.Controls.Add(body);
+        content.Controls.Add(body);
+        content.Controls.Add(flow);
+        return CreatePage(content);
+    }
+
+    private static Panel CreatePage(Control content)
+    {
+        var page = new Panel { AutoScroll = true };
+        page.Controls.Add(content);
         return page;
     }
 
-    private Panel CreatePage(string title)
+    private TableLayoutPanel CreateContentLayout(string title)
     {
-        var page = new Panel();
-        var titleLabel = new Label
+        var layout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            ColumnCount = 1,
+            RowCount = 3,
+            Padding = new Padding(4),
+        };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+        layout.Controls.Add(new Label
         {
             Text = title,
+            AutoSize = true,
             Dock = DockStyle.Top,
             Font = new Font(Font.FontFamily, 16F, FontStyle.Bold),
-            Height = 48
-        };
-        page.Controls.Add(titleLabel);
-        return page;
+            Padding = new Padding(0, 0, 0, 18)
+        }, 0, 0);
+
+        return layout;
     }
 
     private static Label CreateBodyLabel(string text)
@@ -214,8 +237,9 @@ public sealed class SetupWizardForm : Form
         {
             Text = text,
             AutoSize = true,
+            Dock = DockStyle.Top,
             MaximumSize = new Size(640, 0),
-            Padding = new Padding(0, 8, 0, 0)
+            Padding = new Padding(0, 0, 0, 0)
         };
     }
 
@@ -298,13 +322,27 @@ public sealed class SetupWizardForm : Form
 
             var config = CreateConfigFromFields();
             var localPath = new PathMapper(config).MapPath(samplePath);
-            validationLabel.Text = File.Exists(localPath)
-                ? $"OK: {localPath}"
-                : $"Mapped path does not exist yet: {localPath}";
+            if (File.Exists(localPath))
+            {
+                validatedLocalSamplePath = localPath;
+                validationLabel.ForeColor = Color.ForestGreen;
+                validationLabel.Text = $"✓ Mapping verified: {localPath}";
+                testRevealButton.Enabled = true;
+            }
+            else
+            {
+                validatedLocalSamplePath = null;
+                validationLabel.ForeColor = Color.DarkOrange;
+                validationLabel.Text = $"Mapped path does not exist yet: {localPath}";
+                testRevealButton.Enabled = false;
+            }
         }
         catch (Exception ex)
         {
+            validatedLocalSamplePath = null;
+            validationLabel.ForeColor = Color.Firebrick;
             validationLabel.Text = ex.Message;
+            testRevealButton.Enabled = false;
         }
     }
 
@@ -320,20 +358,57 @@ public sealed class SetupWizardForm : Form
     {
         try
         {
-            var samplePath = samplePathBox.Text.Trim();
-            if (string.IsNullOrWhiteSpace(samplePath))
+            if (string.IsNullOrWhiteSpace(validatedLocalSamplePath))
             {
-                MessageBox.Show(this, "Paste a sample Immich path on the validation page first.", "Immich Bridge", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(this, "Validate an existing sample file before testing reveal.", "Immich Bridge", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
-            var localPath = new PathMapper(CreateConfigFromFields()).MapPath(samplePath);
-            launcher.RevealFile(localPath);
+            launcher.RevealFile(validatedLocalSamplePath);
         }
         catch (Exception ex)
         {
             MessageBox.Show(this, ex.Message, "Immich Bridge", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
+    }
+
+    private void ResetSampleValidation()
+    {
+        validatedLocalSamplePath = null;
+        testRevealButton.Enabled = false;
+        validationLabel.ForeColor = SystemColors.ControlText;
+        validationLabel.Text = string.Empty;
+    }
+
+    private void OpenUserscript()
+    {
+        var userscriptPath = FindUserscriptPath();
+        if (userscriptPath is not null)
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = userscriptPath,
+                UseShellExecute = true
+            });
+            return;
+        }
+
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = "https://github.com/Peaj/immich-bridge/releases/latest",
+            UseShellExecute = true
+        });
+    }
+
+    private static string? FindUserscriptPath()
+    {
+        var candidates = new[]
+        {
+            Path.Combine(AppContext.BaseDirectory, "userscript", "immich-bridge.user.js"),
+            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "userscript", "immich-bridge.user.js"))
+        };
+
+        return candidates.FirstOrDefault(File.Exists);
     }
 
     private BridgeConfig CreateConfigFromFields()
