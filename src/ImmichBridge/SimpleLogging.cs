@@ -2,7 +2,17 @@ namespace ImmichBridge;
 
 public sealed class FileLogger
 {
+    public void Info(string message)
+    {
+        Write("INFO", message);
+    }
+
     public void Error(Exception exception)
+    {
+        Write("ERROR", exception.ToString());
+    }
+
+    private static void Write(string level, string message)
     {
         try
         {
@@ -13,11 +23,11 @@ public sealed class FileLogger
                 Directory.CreateDirectory(directory);
             }
 
-            File.AppendAllText(path, $"[{DateTimeOffset.Now:O}] ERROR {exception}\n");
+            File.AppendAllText(path, $"[{DateTimeOffset.Now:O}] {level} {message}\n");
         }
         catch
         {
-            // Logging must not hide the original helper failure.
+            // Logging must not hide the original helper behavior.
         }
     }
 

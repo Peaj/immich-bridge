@@ -53,6 +53,56 @@ public sealed class BridgeApplicationTests
         Assert.Equal(Path.GetFullPath(@"Z:\Photos\img.jpg"), launcher.RevealedPath);
     }
 
+    [Fact]
+    public void Run_OpenWithoutAppMapsPathAndLaunchesSystemOpenWithDialog()
+    {
+        var configPath = WriteConfig(new BridgeConfig
+        {
+            Mappings =
+            [
+                new PathMapping { RemotePrefix = "/mnt/photos", LocalPrefix = @"Z:\Photos" }
+            ],
+            Options = new BridgeOptions { VerifyLocalFileExists = false }
+        });
+        var launcher = new RecordingLauncher();
+
+        var app = new BridgeApplication(
+            launcher,
+            new RecordingRegistrar(),
+            new ConfigLoader(configPath),
+            TextWriter.Null);
+
+        var exitCode = app.Run(["immich-bridge://open?path=%2Fmnt%2Fphotos%2Fimg.jpg"]);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal(Path.GetFullPath(@"Z:\Photos\img.jpg"), launcher.SystemOpenWithPath);
+    }
+
+    [Fact]
+    public void Run_OpenWithCommandMapsPathAndLaunchesSystemOpenWithDialog()
+    {
+        var configPath = WriteConfig(new BridgeConfig
+        {
+            Mappings =
+            [
+                new PathMapping { RemotePrefix = "/mnt/photos", LocalPrefix = @"Z:\Photos" }
+            ],
+            Options = new BridgeOptions { VerifyLocalFileExists = false }
+        });
+        var launcher = new RecordingLauncher();
+
+        var app = new BridgeApplication(
+            launcher,
+            new RecordingRegistrar(),
+            new ConfigLoader(configPath),
+            TextWriter.Null);
+
+        var exitCode = app.Run(["--open-with", "/mnt/photos/img.jpg"]);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal(Path.GetFullPath(@"Z:\Photos\img.jpg"), launcher.SystemOpenWithPath);
+    }
+
     private static string WriteConfig(BridgeConfig config)
     {
         var path = Path.Combine(Path.GetTempPath(), "ImmichBridge.Tests", Guid.NewGuid().ToString("N"), "config.json");
@@ -65,9 +115,16 @@ public sealed class BridgeApplicationTests
     {
         public string? RevealedPath { get; private set; }
 
+        public string? SystemOpenWithPath { get; private set; }
+
         public void RevealFile(string localPath)
         {
             RevealedPath = localPath;
+        }
+
+        public void OpenWithSystemDialog(string localPath)
+        {
+            SystemOpenWithPath = localPath;
         }
 
         public void OpenWithApp(string executablePath, string arguments, string localPath)

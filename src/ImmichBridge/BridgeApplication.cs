@@ -9,17 +9,20 @@ public sealed class BridgeApplication
     private readonly IProtocolRegistrar registrar;
     private readonly ConfigLoader configLoader;
     private readonly TextWriter output;
+    private readonly FileLogger logger;
 
     public BridgeApplication(
         IPlatformLauncher launcher,
         IProtocolRegistrar registrar,
         ConfigLoader configLoader,
-        TextWriter output)
+        TextWriter output,
+        FileLogger? logger = null)
     {
         this.launcher = launcher;
         this.registrar = registrar;
         this.configLoader = configLoader;
         this.output = output;
+        this.logger = logger ?? new FileLogger();
     }
 
     public int Run(string[] args)
@@ -58,6 +61,20 @@ public sealed class BridgeApplication
             return 0;
         }
 
+        if (StringComparer.OrdinalIgnoreCase.Equals(command, "--open-with"))
+        {
+            if (args.Length < 2 || string.IsNullOrWhiteSpace(args[1]))
+            {
+                throw new ArgumentException("--open-with requires a remote path argument.");
+            }
+
+            var localPath = MapAndValidateLocalPath(args[1]);
+            output.WriteLine($"Opening Windows Open With dialog for: {localPath}");
+            logger.Info($"CLI open-with requested for '{args[1]}' -> '{localPath}'.");
+            launcher.OpenWithSystemDialog(localPath);
+            return 0;
+        }
+
         var request = ProtocolRequestParser.Parse(command);
         ExecuteRequest(request);
         return 0;
@@ -66,16 +83,20 @@ public sealed class BridgeApplication
     private void ExecuteRequest(ProtocolRequest request)
     {
         var config = configLoader.Load();
-        var localPath = new PathMapper(config).MapPath(request.RemotePath);
-
-        if (config.Options.VerifyLocalFileExists && !File.Exists(localPath))
-        {
-            throw new FileNotFoundException($"Mapped local file does not exist: {localPath}", localPath);
-        }
+        var localPath = MapAndValidateLocalPath(request.RemotePath, config);
+        logger.Info($"Protocol {request.Action} requested for '{request.RemotePath}' -> '{localPath}'.");
 
         if (request.Action == BridgeAction.Reveal)
         {
             launcher.RevealFile(localPath);
+            logger.Info($"Explorer reveal launched for '{localPath}'.");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(request.AppId))
+        {
+            launcher.OpenWithSystemDialog(localPath);
+            logger.Info($"Windows Open With dialog launched for '{localPath}'.");
             return;
         }
 
@@ -96,6 +117,20 @@ public sealed class BridgeApplication
         }
 
         launcher.OpenWithApp(executablePath, app.Arguments, localPath);
+        logger.Info($"Configured app '{request.AppId}' launched for '{localPath}' using '{executablePath}'.");
+    }
+
+    private string MapAndValidateLocalPath(string remotePath, BridgeConfig? config = null)
+    {
+        config ??= configLoader.Load();
+        var localPath = new PathMapper(config).MapPath(remotePath);
+
+        if (config.Options.VerifyLocalFileExists && !File.Exists(localPath))
+        {
+            throw new FileNotFoundException($"Mapped local file does not exist: {localPath}", localPath);
+        }
+
+        return localPath;
     }
 
     private static bool ConfirmOpen(string appId, string localPath)
@@ -129,7 +164,9 @@ public sealed class BridgeApplication
         output.WriteLine("  ImmichBridge.exe --register-protocol");
         output.WriteLine("  ImmichBridge.exe --unregister-protocol");
         output.WriteLine("  ImmichBridge.exe --map-path <remotePath>");
+        output.WriteLine("  ImmichBridge.exe --open-with <remotePath>");
         output.WriteLine("  ImmichBridge.exe \"immich-bridge://reveal?path=<remotePath>\"");
+        output.WriteLine("  ImmichBridge.exe \"immich-bridge://open?path=<remotePath>\"");
         output.WriteLine("  ImmichBridge.exe \"immich-bridge://open?app=<appId>&path=<remotePath>\"");
     }
 }

@@ -12,12 +12,13 @@ public sealed class ProtocolRequestParserTests
     }
 
     [Fact]
-    public void Parse_OpenRequiresApp()
+    public void Parse_OpenAllowsMissingApp()
     {
-        var exception = Assert.Throws<InvalidOperationException>(
-            () => ProtocolRequestParser.Parse("immich-bridge://open?path=%2Fmnt%2Fphotos%2Fimg.jpg"));
+        var request = ProtocolRequestParser.Parse("immich-bridge://open?path=%2Fmnt%2Fphotos%2Fimg.jpg");
 
-        Assert.Contains("app", exception.Message);
+        Assert.Equal(BridgeAction.Open, request.Action);
+        Assert.Null(request.AppId);
+        Assert.Equal("/mnt/photos/img.jpg", request.RemotePath);
     }
 
     [Fact]

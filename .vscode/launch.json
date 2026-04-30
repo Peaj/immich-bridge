@@ -29,6 +29,20 @@
       "stopAtEntry": false
     },
     {
+      "name": "Immich Bridge: open with sample path",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/src/ImmichBridge/bin/Debug/net10.0-windows/ImmichBridge.exe",
+      "args": [
+        "--open-with",
+        "/external/fotos/Handyfotos ab Dezember 2013/PXL_20240803_171259034.jpg"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    },
+    {
       "name": "Immich Bridge: reveal sample URI",
       "type": "coreclr",
       "request": "launch",

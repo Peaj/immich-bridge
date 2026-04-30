@@ -59,6 +59,20 @@
       "problemMatcher": "$msCompile"
     },
     {
+      "label": "run: open with sample path",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/src/ImmichBridge",
+        "--",
+        "--open-with",
+        "/external/fotos/Handyfotos ab Dezember 2013/PXL_20240803_171259034.jpg"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
       "label": "protocol: register",
       "type": "process",
       "command": "dotnet",
@@ -83,6 +97,12 @@
         "--unregister-protocol"
       ],
       "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "logs: tail helper log",
+      "type": "shell",
+      "command": "Get-Content -LiteralPath \"$env:APPDATA\\ImmichBridge\\logs\\helper.log\" -Tail 80 -Wait",
+      "problemMatcher": []
     },
     {
       "label": "publish: win-x64 single file",

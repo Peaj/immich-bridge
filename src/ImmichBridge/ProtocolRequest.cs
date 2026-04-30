@@ -35,7 +35,7 @@ public static class ProtocolRequestParser
         return actionName.ToLowerInvariant() switch
         {
             "reveal" => new ProtocolRequest(BridgeAction.Reveal, remotePath, null),
-            "open" => new ProtocolRequest(BridgeAction.Open, remotePath, GetRequiredAppId(query)),
+            "open" => new ProtocolRequest(BridgeAction.Open, remotePath, GetOptionalAppId(query)),
             _ => throw new InvalidOperationException($"Unknown Immich Bridge action '{actionName}'.")
         };
     }
@@ -54,11 +54,11 @@ public static class ProtocolRequestParser
         return action;
     }
 
-    private static string GetRequiredAppId(IReadOnlyDictionary<string, string> query)
+    private static string? GetOptionalAppId(IReadOnlyDictionary<string, string> query)
     {
         if (!query.TryGetValue("app", out var appId) || string.IsNullOrWhiteSpace(appId))
         {
-            throw new InvalidOperationException("Open action requires a non-empty 'app' parameter.");
+            return null;
         }
 
         return appId;

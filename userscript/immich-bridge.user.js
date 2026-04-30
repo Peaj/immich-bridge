@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Immich Bridge
 // @namespace    https://github.com/local/immich-bridge
-// @version      0.2.0
+// @version      0.3.0
 // @description  Adds Immich Bridge local workstation actions to Immich asset detail pages.
 // @match        *://*/*
 // @grant        none
@@ -16,7 +16,7 @@
   const assetApiPrefix = '/api/assets/';
   const actions = [
     { label: 'Reveal in Explorer', action: 'reveal', icon: 'folder' },
-    { label: 'Open in Photoshop', action: 'open', appId: 'photoshop', icon: 'app' }
+    { label: 'Open with...', action: 'open', icon: 'app' }
   ];
   let lastAssetId = null;
   let cachedAsset = null;
