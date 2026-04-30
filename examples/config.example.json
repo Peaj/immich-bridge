@@ -1,0 +1,28 @@
+{
+  "Mappings": [
+    {
+      "RemotePrefix": "/mnt/immich-external/photos",
+      "LocalPrefix": "Z:\\Photos"
+    },
+    {
+      "RemotePrefix": "/mnt/archive",
+      "LocalPrefix": "Y:\\Archive"
+    }
+  ],
+  "Apps": {
+    "photoshop": {
+      "ExecutablePath": "C:\\Program Files\\Adobe\\Adobe Photoshop 2025\\Photoshop.exe",
+      "Arguments": "\"{file}\""
+    },
+    "affinity": {
+      "ExecutablePath": "C:\\Program Files\\Affinity\\Photo 2\\Photo.exe",
+      "Arguments": "\"{file}\""
+    }
+  },
+  "Options": {
+    "AllowOnlyMappedPaths": true,
+    "ConfirmBeforeOpeningApps": false,
+    "VerifyLocalFileExists": true,
+    "LogFile": "%AppData%\\ImmichBridge\\logs\\helper.log"
+  }
+}
