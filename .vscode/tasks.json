@@ -1,0 +1,108 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "build",
+        "${workspaceFolder}/ImmichBridge.slnx"
+      ],
+      "problemMatcher": "$msCompile",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "test",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/ImmichBridge.slnx",
+        "--no-build"
+      ],
+      "problemMatcher": "$msCompile",
+      "dependsOn": "build",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "run: help",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/src/ImmichBridge",
+        "--",
+        "--help"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "run: map sample path",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/src/ImmichBridge",
+        "--",
+        "--map-path",
+        "/mnt/immich-external/photos/2024/img.jpg"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "protocol: register",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/src/ImmichBridge",
+        "--",
+        "--register-protocol"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "protocol: unregister",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/src/ImmichBridge",
+        "--",
+        "--unregister-protocol"
+      ],
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "publish: win-x64 single file",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "publish",
+        "${workspaceFolder}/src/ImmichBridge/ImmichBridge.csproj",
+        "-c",
+        "Release",
+        "-r",
+        "win-x64",
+        "--self-contained",
+        "true",
+        "-p:PublishSingleFile=true",
+        "-p:IncludeNativeLibrariesForSelfExtract=true",
+        "-o",
+        "${workspaceFolder}/publish/win-x64"
+      ],
+      "problemMatcher": "$msCompile"
+    }
+  ]
+}
