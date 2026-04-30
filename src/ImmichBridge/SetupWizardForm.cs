@@ -176,7 +176,10 @@ public sealed class SetupWizardForm : Form
     {
         var content = CreateContentLayout("Ready to Use");
         var body = CreateBodyLabel(
-            "Install or update the Tampermonkey userscript, then refresh Immich.\n\nUse the Immich Bridge toolbar button on asset pages to reveal files or open Windows' Open With dialog.");
+            "Immich Bridge is configured. The last step is adding the browser script to Immich.\n\n1. Install the Tampermonkey browser extension if you do not have it yet.\n2. Open the Immich Bridge userscript and approve Tampermonkey's install/update screen.\n3. Refresh Immich and open an asset. The Immich Bridge button appears in the asset toolbar.");
+
+        var tampermonkeyLink = CreateLink("Open Tampermonkey website", "https://www.tampermonkey.net/");
+        var githubLink = CreateLink("View Immich Bridge on GitHub", "https://github.com/Peaj/immich-bridge");
 
         var openUserscriptButton = new Button { Text = "Open userscript", AutoSize = true };
         openUserscriptButton.Click += (_, _) =>
@@ -194,6 +197,8 @@ public sealed class SetupWizardForm : Form
 
         content.Controls.Add(body);
         content.Controls.Add(flow);
+        content.Controls.Add(tampermonkeyLink);
+        content.Controls.Add(githubLink);
         return CreatePage(content);
     }
 
@@ -241,6 +246,27 @@ public sealed class SetupWizardForm : Form
             MaximumSize = new Size(640, 0),
             Padding = new Padding(0, 0, 0, 0)
         };
+    }
+
+    private static LinkLabel CreateLink(string text, string url)
+    {
+        var link = new LinkLabel
+        {
+            Text = text,
+            AutoSize = true,
+            Dock = DockStyle.Top,
+            Padding = new Padding(0, 10, 0, 0),
+            LinkBehavior = LinkBehavior.HoverUnderline
+        };
+        link.LinkClicked += (_, _) =>
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true
+            });
+        };
+        return link;
     }
 
     private void BuildButtons()
@@ -395,7 +421,7 @@ public sealed class SetupWizardForm : Form
 
         Process.Start(new ProcessStartInfo
         {
-            FileName = "https://github.com/Peaj/immich-bridge/releases/latest",
+            FileName = "https://raw.githubusercontent.com/Peaj/immich-bridge/main/userscript/immich-bridge.user.js",
             UseShellExecute = true
         });
     }

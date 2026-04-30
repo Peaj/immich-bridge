@@ -115,7 +115,13 @@ immich-bridge://open?path=%2Fmnt%2Fimmich-external%2Fphotos%2F2024%2Fimg.jpg
 immich-bridge://open?app=photoshop&path=%2Fmnt%2Fimmich-external%2Fphotos%2F2024%2Fimg.jpg
 ```
 
-Install `userscript/immich-bridge.user.js` in Tampermonkey. On Immich asset detail pages, it injects an Immich Bridge icon into the asset toolbar, opens a small action menu, calls `GET /api/assets/{id}` with the current browser session, reads `originalPath`, and launches `immich-bridge://` URLs. The default `Open with...` action uses Windows' native app picker, so it does not need app ids hardcoded in the userscript.
+Install `userscript/immich-bridge.user.js` in Tampermonkey. You can use the copy bundled in the release ZIP, the `.user.js` release asset, or the latest script directly from GitHub:
+
+```text
+https://raw.githubusercontent.com/Peaj/immich-bridge/main/userscript/immich-bridge.user.js
+```
+
+On Immich asset detail pages, it injects an Immich Bridge icon into the asset toolbar, opens a small action menu, calls `GET /api/assets/{id}` with the current browser session, reads `originalPath`, and launches `immich-bridge://` URLs. The default `Open with...` action uses Windows' native app picker, so it does not need app ids hardcoded in the userscript.
 
 ## Releases
 
