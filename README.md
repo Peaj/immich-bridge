@@ -10,7 +10,7 @@ Immich Bridge is a small Windows helper that adds workstation-native actions to 
 - Register and unregister the `immich-bridge://` URL protocol under `HKEY_CURRENT_USER`.
 - Run protocol actions without opening a console window.
 - Load JSON config from `%AppData%\ImmichBridge\config.json`.
-- Reject unmapped paths and unknown app ids by default.
+- Reject unmapped paths and unknown app ids.
 - Log errors to `%AppData%\ImmichBridge\logs\helper.log`.
 
 ## Build and Test
@@ -39,7 +39,6 @@ Create `%AppData%\ImmichBridge\config.json` from `examples/config.example.json` 
     }
   },
   "Options": {
-    "AllowOnlyMappedPaths": true,
     "ConfirmBeforeOpeningApps": false,
     "VerifyLocalFileExists": true,
     "LogFile": "%AppData%\\ImmichBridge\\logs\\helper.log"
@@ -87,4 +86,4 @@ Install `userscript/immich-bridge.user.js` in Tampermonkey. On Immich asset deta
 
 ## Security Model
 
-Immich Bridge never accepts executable paths or shell arguments from the URL. URLs can only name an action, an optional configured app id, and an Immich path. By default, paths must match a configured mapping and the mapped local file must exist before anything is launched.
+Immich Bridge never accepts executable paths or shell arguments from the URL. URLs can only name an action, an optional configured app id, and an Immich path. Paths must match a configured mapping, and the mapped local file must exist by default before anything is launched.

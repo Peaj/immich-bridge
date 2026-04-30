@@ -39,7 +39,7 @@ public sealed class PathMapperTests
     }
 
     [Fact]
-    public void MapPath_RejectsUnmappedPathsByDefault()
+    public void MapPath_RejectsUnmappedPaths()
     {
         var mapper = new PathMapper(new BridgeConfig
         {

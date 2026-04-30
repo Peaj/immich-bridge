@@ -35,8 +35,6 @@ public sealed class AppDefinition
 
 public sealed class BridgeOptions
 {
-    public bool AllowOnlyMappedPaths { get; set; } = true;
-
     public bool ConfirmBeforeOpeningApps { get; set; }
 
     public bool VerifyLocalFileExists { get; set; } = true;

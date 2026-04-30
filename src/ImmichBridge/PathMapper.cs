@@ -29,12 +29,7 @@ public sealed class PathMapper
 
         if (bestMatch is null)
         {
-            if (config.Options.AllowOnlyMappedPaths)
-            {
-                throw new InvalidOperationException($"No mapping found for path: {remotePath}");
-            }
-
-            return remotePath;
+            throw new InvalidOperationException($"No mapping found for path: {remotePath}");
         }
 
         var relative = normalizedRemote[bestMatch.NormalizedRemotePrefix.Length..].TrimStart('/');

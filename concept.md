@@ -171,7 +171,6 @@ Example:
     }
   },
   "Options": {
-    "AllowOnlyMappedPaths": true,
     "ConfirmBeforeOpeningApps": false,
     "LogFile": "%AppData%\\ImmichBridge\\logs\\helper.log"
   }
@@ -206,7 +205,7 @@ Important behavior:
 
 * Longest matching prefix should win.
 * Normalize slashes before comparison.
-* Reject unmapped paths by default.
+* Reject unmapped paths.
 * Optionally check `File.Exists(localPath)` before launching.
 
 ## Platform Abstraction
