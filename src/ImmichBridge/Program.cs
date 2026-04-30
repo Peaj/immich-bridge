@@ -7,6 +7,11 @@ public static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        if (!LooksLikeProtocolLaunch(args))
+        {
+            ConsoleBridge.AttachToParentConsole();
+        }
+
         var logger = new FileLogger();
         try
         {

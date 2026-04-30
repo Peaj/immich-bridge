@@ -7,6 +7,7 @@ Immich Bridge is a small Windows helper that adds workstation-native actions to 
 - Reveal the mapped local file in Windows Explorer.
 - Open the mapped local file in a configured desktop app such as Photoshop.
 - Register and unregister the `immich-bridge://` URL protocol under `HKEY_CURRENT_USER`.
+- Run protocol actions without opening a console window.
 - Load JSON config from `%AppData%\ImmichBridge\config.json`.
 - Reject unmapped paths and unknown app ids by default.
 - Log errors to `%AppData%\ImmichBridge\logs\helper.log`.
