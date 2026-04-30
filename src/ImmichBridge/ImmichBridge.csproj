@@ -12,8 +12,8 @@
     <Product>Immich Bridge</Product>
     <Description>Windows helper for Immich workstation actions.</Description>
     <Authors>Immich Bridge Contributors</Authors>
-    <RepositoryUrl>https://github.com/OWNER/immich-bridge</RepositoryUrl>
-    <PackageProjectUrl>https://github.com/OWNER/immich-bridge</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Peaj/immich-bridge</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/Peaj/immich-bridge</PackageProjectUrl>
   </PropertyGroup>
 
 </Project>
