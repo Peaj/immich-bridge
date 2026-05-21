@@ -33,6 +33,9 @@
   let lastAssetId = null;
   let cachedAsset = null;
   let toolbarRefreshTimer = 0;
+  let lastLocation = window.location.href;
+  let mutationRefreshTimer = 0;
+  const routeRetryDelays = [50, 150, 300, 700, 1200, 2000, 4000];
 
   function extractAssetIdFromUrl() {
     const matches = [...window.location.pathname.matchAll(/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/gi)];
@@ -220,6 +223,15 @@
     cachedAsset = null;
   }
 
+  function findDirectChild(parent, descendant) {
+    let child = descendant;
+    while (child.parentElement && child.parentElement !== parent) {
+      child = child.parentElement;
+    }
+
+    return child.parentElement === parent ? child : descendant;
+  }
+
   function isVisibleElement(element) {
     const rect = element.getBoundingClientRect();
     const style = window.getComputedStyle(element);
@@ -230,49 +242,23 @@
       && style.opacity !== '0';
   }
 
-  function isToolbarButton(button) {
-    if (button.closest(`#${toolbarHostId}`) || !isVisibleElement(button) || !button.querySelector('svg')) {
-      return false;
-    }
-
-    const rect = button.getBoundingClientRect();
-    const isIconSized = rect.width >= 28
-      && rect.width <= 56
-      && rect.height >= 28
-      && rect.height <= 56;
-    const hasImmichButtonShape = button.dataset.buttonRoot === 'true'
-      || (button.classList.contains('rounded-full')
-        && (button.classList.contains('h-10') || button.classList.contains('size-10'))
-        && (button.classList.contains('w-10') || button.classList.contains('size-10')));
-
-    return isIconSized && hasImmichButtonShape;
-  }
-
-  function findAssetToolbarButtons() {
-    const topLimit = Math.min(140, window.innerHeight * 0.25);
-    return [...document.querySelectorAll('button')]
-      .filter(isToolbarButton)
-      .filter(button => {
-        const rect = button.getBoundingClientRect();
-        return rect.top >= 0
-          && rect.top <= topLimit
-          && rect.left >= window.innerWidth * 0.35
-          && rect.right <= window.innerWidth;
-      })
-      .sort((left, right) => {
-        const leftRect = left.getBoundingClientRect();
-        const rightRect = right.getBoundingClientRect();
-        return leftRect.left - rightRect.left;
-      });
+  function findToolbarButtons(toolbar) {
+    return [...toolbar.querySelectorAll('button[data-button-root="true"], button')]
+      .filter(button => !button.closest(`#${toolbarHostId}`) && isVisibleElement(button));
   }
 
   function findInsertionPoint() {
-    const firstToolbarButton = findAssetToolbarButtons()[0];
-    if (firstToolbarButton && firstToolbarButton.parentElement) {
-      return { parent: firstToolbarButton.parentElement, before: firstToolbarButton };
+    const toolbars = [...document.querySelectorAll('#immich-asset-viewer [data-testid="asset-viewer-navbar-actions"]')]
+      .filter(isVisibleElement)
+      .map(toolbar => ({ toolbar, firstButton: findToolbarButtons(toolbar)[0] }))
+      .filter(candidate => candidate.firstButton);
+
+    if (toolbars.length === 0) {
+      return null;
     }
 
-    return null;
+    const selected = toolbars[toolbars.length - 1];
+    return { parent: selected.toolbar, before: findDirectChild(selected.toolbar, selected.firstButton) };
   }
 
   function ensureToolbarButton() {
@@ -289,6 +275,9 @@
 
     const existing = document.getElementById(toolbarHostId);
     if (existing && existing.dataset.assetId === assetId) {
+      if (existing.parentElement !== insertionPoint.parent || existing.nextSibling !== insertionPoint.before) {
+        insertionPoint.parent.insertBefore(existing, insertionPoint.before);
+      }
       return;
     }
 
@@ -316,16 +305,43 @@
     toolbarRefreshTimer = window.setTimeout(ensureToolbarButton, 100);
   }
 
+  function scheduleMutationRefresh() {
+    window.clearTimeout(mutationRefreshTimer);
+    mutationRefreshTimer = window.setTimeout(ensureToolbarButton, 250);
+  }
+
+  function scheduleToolbarRefreshIfLocationChanged() {
+    if (lastLocation === window.location.href) {
+      return;
+    }
+
+    lastLocation = window.location.href;
+    if (!extractAssetIdFromUrl()) {
+      removeBridgeUi();
+    }
+    scheduleRouteRefreshes();
+  }
+
+  function scheduleRouteRefreshes() {
+    for (const delay of routeRetryDelays) {
+      window.setTimeout(ensureToolbarButton, delay);
+    }
+  }
+
   for (const methodName of ['pushState', 'replaceState']) {
     const original = history[methodName];
     history[methodName] = function (...args) {
       const result = original.apply(this, args);
-      scheduleToolbarRefresh();
+      if (!extractAssetIdFromUrl()) {
+        removeBridgeUi();
+      }
+      scheduleRouteRefreshes();
       return result;
     };
   }
 
-  window.addEventListener('popstate', scheduleToolbarRefresh);
+  window.addEventListener('popstate', scheduleRouteRefreshes);
+  window.addEventListener('hashchange', scheduleRouteRefreshes);
   window.addEventListener('resize', closeMenu);
   window.addEventListener('scroll', closeMenu, true);
   window.addEventListener('click', closeMenu);
@@ -334,7 +350,8 @@
       closeMenu();
     }
   });
-  new MutationObserver(scheduleToolbarRefresh).observe(document.documentElement, { childList: true, subtree: true });
+  new MutationObserver(scheduleMutationRefresh).observe(document.documentElement, { childList: true, subtree: true });
+  window.setInterval(scheduleToolbarRefreshIfLocationChanged, 250);
   scheduleToolbarRefresh();
   }
 })();
