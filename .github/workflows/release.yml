@@ -33,6 +33,8 @@ jobs:
           $projectVersion = $project.Project.PropertyGroup.Version
           $tagVersion = "${{ github.ref_name }}".TrimStart("v")
           $userscriptVersion = (Select-String -Path .\userscript\immich-bridge.user.js -Pattern '^// @version\s+(.+)$').Matches[0].Groups[1].Value.Trim()
+          $extensionManifest = Get-Content .\browser-extension\manifest.json -Raw | ConvertFrom-Json
+          $extensionVersion = $extensionManifest.version
 
           if ($projectVersion -ne $tagVersion) {
             throw "Tag version $tagVersion does not match project version $projectVersion."
@@ -40,6 +42,10 @@ jobs:
 
           if ($userscriptVersion -ne $tagVersion) {
             throw "Tag version $tagVersion does not match userscript version $userscriptVersion."
+          }
+
+          if ($extensionVersion -ne $tagVersion) {
+            throw "Tag version $tagVersion does not match Firefox extension version $extensionVersion."
           }
 
       - name: Restore
@@ -53,6 +59,15 @@ jobs:
 
       - name: Check userscript syntax
         run: node --check .\userscript\immich-bridge.user.js
+
+      - name: Check extension syntax
+        run: npm run check:extension
+
+      - name: Lint Firefox extension
+        run: npm run lint:extension
+
+      - name: Build Firefox extension
+        run: npm run build:extension
 
       - name: Publish win-x64
         run: >
@@ -69,7 +84,9 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force .\artifacts\ImmichBridge-win-x64\userscript | Out-Null
+          New-Item -ItemType Directory -Force .\artifacts\ImmichBridge-win-x64\browser-extension | Out-Null
           Copy-Item .\userscript\immich-bridge.user.js .\artifacts\ImmichBridge-win-x64\userscript\immich-bridge.user.js
+          Copy-Item .\browser-extension\* .\artifacts\ImmichBridge-win-x64\browser-extension -Recurse
           Copy-Item .\README.md .\artifacts\ImmichBridge-win-x64\README.md
           Copy-Item .\CHANGELOG.md .\artifacts\ImmichBridge-win-x64\CHANGELOG.md
 
@@ -79,6 +96,8 @@ jobs:
           $version = "${{ github.ref_name }}"
           Compress-Archive -Path .\artifacts\ImmichBridge-win-x64\* -DestinationPath ".\artifacts\ImmichBridge-win-x64-$version.zip" -Force
           Copy-Item .\userscript\immich-bridge.user.js ".\artifacts\immich-bridge-$version.user.js"
+          $builtExtension = Get-ChildItem .\artifacts\browser-extension -Filter *.zip | Select-Object -First 1
+          Copy-Item $builtExtension.FullName ".\artifacts\immich-bridge-firefox-$version.zip"
           Get-ChildItem .\artifacts -File |
             Where-Object { $_.Name -like "*.zip" -or $_.Name -like "*.user.js" } |
             Get-FileHash -Algorithm SHA256 |
@@ -92,4 +111,5 @@ jobs:
           files: |
             artifacts/ImmichBridge-win-x64-${{ github.ref_name }}.zip
             artifacts/immich-bridge-${{ github.ref_name }}.user.js
+            artifacts/immich-bridge-firefox-${{ github.ref_name }}.zip
             artifacts/SHA256SUMS.txt

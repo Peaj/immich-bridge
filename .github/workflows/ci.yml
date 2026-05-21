@@ -35,3 +35,9 @@ jobs:
 
       - name: Check userscript syntax
         run: node --check .\userscript\immich-bridge.user.js
+
+      - name: Check extension syntax
+        run: npm run check:extension
+
+      - name: Lint Firefox extension
+        run: npm run lint:extension
