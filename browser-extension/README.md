@@ -2,6 +2,14 @@
 
 This is the Firefox-first WebExtension package for Immich Bridge. It replaces the Tampermonkey UI injection for supported browsers while keeping the userscript as a fallback.
 
+## Desktop Companion Required
+
+This add-on requires the Immich Bridge desktop companion app for local file actions. Firefox extensions cannot directly open Windows Explorer or launch desktop apps, so the companion app handles those OS-level actions through the `immich-bridge://` protocol.
+
+Install the latest desktop companion app from the [Immich Bridge latest release](https://github.com/Peaj/immich-bridge/releases/latest).
+
+The extension only runs on the Immich URL you configure. When you click an Immich Bridge action, it sends the selected asset path to the locally installed companion app. It does not collect telemetry and does not send data to external servers.
+
 ## Local Testing
 
 ```powershell
