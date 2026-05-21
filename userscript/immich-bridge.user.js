@@ -206,16 +206,56 @@
     cachedAsset = null;
   }
 
-  function findInsertionPoint() {
-    const shareButton = document.querySelector('button[aria-label="Share"]');
-    if (shareButton && shareButton.parentElement) {
-      return { parent: shareButton.parentElement, before: shareButton };
+  function isVisibleElement(element) {
+    const rect = element.getBoundingClientRect();
+    const style = window.getComputedStyle(element);
+    return rect.width > 0
+      && rect.height > 0
+      && style.display !== 'none'
+      && style.visibility !== 'hidden'
+      && style.opacity !== '0';
+  }
+
+  function isToolbarButton(button) {
+    if (button.closest(`#${toolbarHostId}`) || !isVisibleElement(button) || !button.querySelector('svg')) {
+      return false;
     }
 
-    const moreButton = document.querySelector('button[aria-label="More"][aria-haspopup="true"]');
-    const moreWrapper = moreButton?.closest('div');
-    if (moreWrapper && moreWrapper.parentElement) {
-      return { parent: moreWrapper.parentElement, before: moreWrapper };
+    const rect = button.getBoundingClientRect();
+    const isIconSized = rect.width >= 28
+      && rect.width <= 56
+      && rect.height >= 28
+      && rect.height <= 56;
+    const hasImmichButtonShape = button.dataset.buttonRoot === 'true'
+      || (button.classList.contains('rounded-full')
+        && (button.classList.contains('h-10') || button.classList.contains('size-10'))
+        && (button.classList.contains('w-10') || button.classList.contains('size-10')));
+
+    return isIconSized && hasImmichButtonShape;
+  }
+
+  function findAssetToolbarButtons() {
+    const topLimit = Math.min(140, window.innerHeight * 0.25);
+    return [...document.querySelectorAll('button')]
+      .filter(isToolbarButton)
+      .filter(button => {
+        const rect = button.getBoundingClientRect();
+        return rect.top >= 0
+          && rect.top <= topLimit
+          && rect.left >= window.innerWidth * 0.35
+          && rect.right <= window.innerWidth;
+      })
+      .sort((left, right) => {
+        const leftRect = left.getBoundingClientRect();
+        const rightRect = right.getBoundingClientRect();
+        return leftRect.left - rightRect.left;
+      });
+  }
+
+  function findInsertionPoint() {
+    const firstToolbarButton = findAssetToolbarButtons()[0];
+    if (firstToolbarButton && firstToolbarButton.parentElement) {
+      return { parent: firstToolbarButton.parentElement, before: firstToolbarButton };
     }
 
     return null;
@@ -238,7 +278,13 @@
       return;
     }
 
-    existing?.remove();
+    if (existing) {
+      existing.dataset.assetId = assetId;
+      if (existing.parentElement !== insertionPoint.parent || existing.nextSibling !== insertionPoint.before) {
+        insertionPoint.parent.insertBefore(existing, insertionPoint.before);
+      }
+      return;
+    }
 
     const host = document.createElement('div');
     host.id = toolbarHostId;
