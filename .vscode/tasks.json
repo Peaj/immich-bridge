@@ -131,6 +131,60 @@
       "problemMatcher": []
     },
     {
+      "label": "extension: check syntax",
+      "type": "process",
+      "command": "npm",
+      "args": [
+        "run",
+        "check:extension"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "extension: lint",
+      "type": "process",
+      "command": "npm",
+      "args": [
+        "run",
+        "lint:extension"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "extension: build package",
+      "type": "process",
+      "command": "npm",
+      "args": [
+        "run",
+        "build:extension"
+      ],
+      "problemMatcher": [],
+      "dependsOn": [
+        "extension: check syntax",
+        "extension: lint"
+      ],
+      "dependsOrder": "sequence"
+    },
+    {
+      "label": "extension: run in Firefox",
+      "type": "process",
+      "command": "npx",
+      "args": [
+        "--yes",
+        "web-ext",
+        "run",
+        "--source-dir",
+        "${workspaceFolder}/browser-extension"
+      ],
+      "isBackground": true,
+      "problemMatcher": [],
+      "dependsOn": [
+        "extension: check syntax",
+        "extension: lint"
+      ],
+      "dependsOrder": "sequence"
+    },
+    {
       "label": "publish: win-x64 single file",
       "type": "process",
       "command": "dotnet",

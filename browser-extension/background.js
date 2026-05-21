@@ -6,7 +6,8 @@
   const extensionApi = globalThis.browser;
 
   function originToPattern(origin) {
-    return `${origin.replace(/\/$/, '')}/*`;
+    const url = new URL(origin);
+    return `${url.protocol}//${url.hostname}/*`;
   }
 
   async function getStoredOrigin() {

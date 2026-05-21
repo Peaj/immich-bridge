@@ -10,7 +10,8 @@
   const removePermission = document.getElementById('remove-permission');
 
   function originToPattern(origin) {
-    return `${origin.replace(/\/$/, '')}/*`;
+    const url = new URL(origin);
+    return `${url.protocol}//${url.hostname}/*`;
   }
 
   function normalizeOrigin(value) {

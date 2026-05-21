@@ -1,10 +1,26 @@
 (function () {
   'use strict';
 
-  if (window.__immichBridgeContentLoaded) {
-    return;
-  }
-  window.__immichBridgeContentLoaded = true;
+  const extensionApi = globalThis.browser;
+  const storageKey = 'immichOrigin';
+
+  extensionApi.storage.local.get(storageKey)
+    .then(values => {
+      if (values[storageKey] !== window.location.origin) {
+        return;
+      }
+
+      startImmichBridge();
+    })
+    .catch(error => {
+      console.warn('[Immich Bridge] Unable to read extension settings.', error);
+    });
+
+  function startImmichBridge() {
+    if (window.__immichBridgeContentLoaded) {
+      return;
+    }
+    window.__immichBridgeContentLoaded = true;
 
   const protocol = 'immich-bridge';
   const toolbarHostId = 'immich-bridge-toolbar-host';
@@ -274,4 +290,5 @@
   });
   new MutationObserver(scheduleToolbarRefresh).observe(document.documentElement, { childList: true, subtree: true });
   scheduleToolbarRefresh();
+  }
 })();
