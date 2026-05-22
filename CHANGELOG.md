@@ -2,6 +2,14 @@
 
 All notable changes to Immich Bridge are tracked here.
 
+## 0.2.1
+
+- Updated Firefox add-on metadata for AMO review.
+- Added explicit unofficial Immich integration disclosure.
+- Declared local-only selected asset path handling under Firefox add-on data permissions.
+- Added the MIT license.
+- Added repository badges and an AI assistance note to the GitHub README.
+
 ## 0.2.0
 
 - Added the Firefox WebExtension package for Immich UI integration.

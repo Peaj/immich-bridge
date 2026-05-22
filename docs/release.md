@@ -21,8 +21,8 @@ The release workflow rejects tags that do not match the project, userscript, and
 ## Create a Release
 
 ```powershell
-git tag v0.2.0
-git push origin v0.2.0
+git tag v0.2.1
+git push origin v0.2.1
 ```
 
 The release workflow publishes:
