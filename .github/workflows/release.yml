@@ -104,10 +104,38 @@ jobs:
             ForEach-Object { "$($_.Hash.ToLowerInvariant())  $(Split-Path $_.Path -Leaf)" } |
             Set-Content .\artifacts\SHA256SUMS.txt
 
+      - name: Extract release notes
+        shell: pwsh
+        run: |
+          $tagVersion = "${{ github.ref_name }}".TrimStart("v")
+          $lines = Get-Content .\CHANGELOG.md
+          $heading = "## $tagVersion"
+          $start = [Array]::FindIndex($lines, [Predicate[string]]{ param($line) $line.Trim() -eq $heading })
+
+          if ($start -lt 0) {
+            throw "Could not find changelog section '$heading'."
+          }
+
+          $end = $lines.Count
+          for ($index = $start + 1; $index -lt $lines.Count; $index++) {
+            if ($lines[$index] -match '^##\s+') {
+              $end = $index
+              break
+            }
+          }
+
+          $releaseNotes = $lines[$start..($end - 1)]
+          if (-not ($releaseNotes | Where-Object { $_.Trim().Length -gt 0 })) {
+            throw "Changelog section '$heading' is empty."
+          }
+
+          New-Item -ItemType Directory -Force .\artifacts | Out-Null
+          $releaseNotes | Set-Content .\artifacts\RELEASE_NOTES.md
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          body_path: CHANGELOG.md
+          body_path: artifacts/RELEASE_NOTES.md
           files: |
             artifacts/ImmichBridge-win-x64-${{ github.ref_name }}.zip
             artifacts/immich-bridge-${{ github.ref_name }}.user.js
