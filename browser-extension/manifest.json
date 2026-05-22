@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "Immich Bridge",
+  "version": "0.1.0",
+  "description": "Adds Immich Bridge local workstation actions to Immich asset detail pages.",
+  "homepage_url": "https://github.com/Peaj/immich-bridge",
+  "permissions": [
+    "scripting",
+    "storage"
+  ],
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "scripts": [
+      "background.js"
+    ]
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
+  "action": {
+    "default_title": "Immich Bridge"
+  },
+  "icons": {
+    "48": "icons/immich-bridge.svg",
+    "96": "icons/immich-bridge.svg"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "immich-bridge@peaj.de",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      },
+      "strict_min_version": "142.0"
+    }
+  }
+}

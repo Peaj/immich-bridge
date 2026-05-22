@@ -1,6 +1,6 @@
 # Immich Bridge
 
-Immich Bridge is a small Windows helper that adds workstation-native actions to Immich assets. A Tampermonkey userscript adds buttons to Immich, and a local .NET helper handles `immich-bridge://` protocol links by mapping Immich server paths to local Windows paths.
+Immich Bridge is a small Windows helper that adds workstation-native actions to Immich assets. A Firefox WebExtension adds buttons to Immich, and a local .NET helper handles `immich-bridge://` protocol links by mapping Immich server paths to local Windows paths. A Tampermonkey userscript remains available as a fallback for unsupported browsers.
 
 ## Features
 
@@ -18,6 +18,8 @@ Immich Bridge is a small Windows helper that adds workstation-native actions to 
 ```powershell
 dotnet build .\ImmichBridge.slnx
 dotnet test .\ImmichBridge.slnx
+npm run check:extension
+npm run lint:extension
 ```
 
 ## Install
@@ -31,7 +33,7 @@ On first launch, Immich Bridge opens a setup wizard that:
 - lets you choose the matching local Windows folder, for example `M:\Fotos`;
 - optionally validates a sample Immich asset path;
 - registers `immich-bridge://` under `HKEY_CURRENT_USER`;
-- points you to the Tampermonkey userscript.
+- points you to the Firefox add-on, with the Tampermonkey userscript as a fallback.
 
 No admin rights are required for protocol registration.
 
@@ -115,17 +117,25 @@ immich-bridge://open?path=%2Fmnt%2Fimmich-external%2Fphotos%2F2024%2Fimg.jpg
 immich-bridge://open?app=photoshop&path=%2Fmnt%2Fimmich-external%2Fphotos%2F2024%2Fimg.jpg
 ```
 
-Install `userscript/immich-bridge.user.js` in Tampermonkey. You can use the copy bundled in the release ZIP, the `.user.js` release asset, or the latest script directly from GitHub:
+Install the Firefox add-on from Mozilla Add-ons:
+
+```text
+https://addons.mozilla.org/firefox/addon/immich-bridge/
+```
+
+After installing, open the Immich Bridge extension options page, enter your Immich base URL, and grant access for that site. The extension stores only that local browser setting and injects the toolbar button only on the configured Immich origin.
+
+For unsupported browsers, store-review delays, or users who prefer Tampermonkey, install `userscript/immich-bridge.user.js` in Tampermonkey. You can use the copy bundled in the release ZIP, the `.user.js` release asset, or the latest script directly from GitHub:
 
 ```text
 https://raw.githubusercontent.com/Peaj/immich-bridge/main/userscript/immich-bridge.user.js
 ```
 
-On Immich asset detail pages, it injects an Immich Bridge icon into the asset toolbar, opens a small action menu, calls `GET /api/assets/{id}` with the current browser session, reads `originalPath`, and launches `immich-bridge://` URLs. The default `Open with...` action uses Windows' native app picker, so it does not need app ids hardcoded in the userscript.
+On Immich asset detail pages, the browser integration injects an Immich Bridge icon into the asset toolbar, opens a small action menu, calls `GET /api/assets/{id}` with the current browser session, reads `originalPath`, and launches `immich-bridge://` URLs. The default `Open with...` action uses Windows' native app picker, so it does not need app ids hardcoded in the browser extension or userscript.
 
 ## Releases
 
-Immich Bridge uses semantic versioning and GitHub Releases. Release tags use `vX.Y.Z`; the release workflow verifies that the tag, app version, and userscript version match. See `docs/release.md` for the release process.
+Immich Bridge uses semantic versioning and GitHub Releases. Release tags use `vX.Y.Z`; the release workflow verifies that the tag, app version, userscript version, and Firefox extension version match. See `docs/release.md` for the release process.
 
 ## Security Model
 

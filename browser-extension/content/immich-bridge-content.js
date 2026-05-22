@@ -1,14 +1,26 @@
-// ==UserScript==
-// @name         Immich Bridge
-// @namespace    https://github.com/Peaj/immich-bridge
-// @version      0.1.0
-// @description  Adds Immich Bridge local workstation actions to Immich asset detail pages.
-// @match        *://*/*
-// @grant        none
-// ==/UserScript==
-
 (function () {
   'use strict';
+
+  const extensionApi = globalThis.browser;
+  const storageKey = 'immichOrigin';
+
+  extensionApi.storage.local.get(storageKey)
+    .then(values => {
+      if (values[storageKey] !== window.location.origin) {
+        return;
+      }
+
+      startImmichBridge();
+    })
+    .catch(error => {
+      console.warn('[Immich Bridge] Unable to read extension settings.', error);
+    });
+
+  function startImmichBridge() {
+    if (window.__immichBridgeContentLoaded) {
+      return;
+    }
+    window.__immichBridgeContentLoaded = true;
 
   const protocol = 'immich-bridge';
   const toolbarHostId = 'immich-bridge-toolbar-host';
@@ -20,6 +32,7 @@
   ];
   let lastAssetId = null;
   let cachedAsset = null;
+  let toolbarRefreshTimer = 0;
   let lastLocation = window.location.href;
   let mutationRefreshTimer = 0;
   const routeRetryDelays = [50, 150, 300, 700, 1200, 2000, 4000];
@@ -43,7 +56,8 @@
       return cachedAsset;
     }
 
-    const response = await fetch(`${assetApiPrefix}${encodeURIComponent(assetId)}`, {
+    const url = new URL(`${assetApiPrefix}${encodeURIComponent(assetId)}`, window.location.href);
+    const response = await fetch(url, {
       credentials: 'same-origin',
       headers: { Accept: 'application/json' }
     });
@@ -287,7 +301,8 @@
   }
 
   function scheduleToolbarRefresh() {
-    window.setTimeout(ensureToolbarButton, 100);
+    window.clearTimeout(toolbarRefreshTimer);
+    toolbarRefreshTimer = window.setTimeout(ensureToolbarButton, 100);
   }
 
   function scheduleMutationRefresh() {
@@ -338,4 +353,5 @@
   new MutationObserver(scheduleMutationRefresh).observe(document.documentElement, { childList: true, subtree: true });
   window.setInterval(scheduleToolbarRefreshIfLocationChanged, 250);
   scheduleToolbarRefresh();
+  }
 })();

@@ -6,6 +6,11 @@ namespace ImmichBridge;
 
 public sealed class SetupWizardForm : Form
 {
+    private const string FirefoxAddonUrl = "https://addons.mozilla.org/firefox/addon/immich-bridge/";
+    private const string UserscriptUrl = "https://raw.githubusercontent.com/Peaj/immich-bridge/main/userscript/immich-bridge.user.js";
+    private const string TampermonkeyUrl = "https://www.tampermonkey.net/";
+    private const string GitHubUrl = "https://github.com/Peaj/immich-bridge";
+
     private readonly ConfigService configService;
     private readonly IProtocolRegistrar registrar;
     private readonly IPlatformLauncher launcher;
@@ -176,16 +181,22 @@ public sealed class SetupWizardForm : Form
     {
         var content = CreateContentLayout("Ready to Use");
         var body = CreateBodyLabel(
-            "Immich Bridge is configured. The last step is adding the browser script to Immich.\n\n1. Install the Tampermonkey browser extension if you do not have it yet.\n2. Open the Immich Bridge userscript and approve Tampermonkey's install/update screen.\n3. Refresh Immich and open an asset. The Immich Bridge button appears in the asset toolbar.");
+            "Immich Bridge is configured. The last step is adding the browser integration to Immich.\n\n1. Install the Firefox add-on.\n2. Enter your Immich URL in the add-on options page and approve access for that site.\n3. Refresh Immich and open an asset. The Immich Bridge button appears in the asset toolbar.\n\nIf the Firefox add-on is not available yet, or you use an unsupported browser, use the Tampermonkey userscript fallback.");
 
-        var tampermonkeyLink = CreateLink("Open Tampermonkey website", "https://www.tampermonkey.net/");
-        var githubLink = CreateLink("View Immich Bridge on GitHub", "https://github.com/Peaj/immich-bridge");
+        var installFirefoxAddonButton = new Button { Text = "Install Firefox add-on", AutoSize = true };
+        installFirefoxAddonButton.Click += (_, _) =>
+        {
+            OpenUrl(FirefoxAddonUrl);
+        };
 
-        var openUserscriptButton = new Button { Text = "Open userscript", AutoSize = true };
+        var openUserscriptButton = new Button { Text = "Open userscript fallback", AutoSize = true };
         openUserscriptButton.Click += (_, _) =>
         {
             OpenUserscript();
         };
+
+        var tampermonkeyLink = CreateLink("Open Tampermonkey website", TampermonkeyUrl);
+        var githubLink = CreateLink("View Immich Bridge on GitHub", GitHubUrl);
 
         var flow = new FlowLayoutPanel
         {
@@ -193,6 +204,7 @@ public sealed class SetupWizardForm : Form
             AutoSize = true,
             Padding = new Padding(0, 18, 0, 0)
         };
+        flow.Controls.Add(installFirefoxAddonButton);
         flow.Controls.Add(openUserscriptButton);
 
         content.Controls.Add(body);
@@ -260,13 +272,18 @@ public sealed class SetupWizardForm : Form
         };
         link.LinkClicked += (_, _) =>
         {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = url,
-                UseShellExecute = true
-            });
+            OpenUrl(url);
         };
         return link;
+    }
+
+    private static void OpenUrl(string url)
+    {
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = url,
+            UseShellExecute = true
+        });
     }
 
     private void BuildButtons()
@@ -421,7 +438,7 @@ public sealed class SetupWizardForm : Form
 
         Process.Start(new ProcessStartInfo
         {
-            FileName = "https://raw.githubusercontent.com/Peaj/immich-bridge/main/userscript/immich-bridge.user.js",
+            FileName = UserscriptUrl,
             UseShellExecute = true
         });
     }

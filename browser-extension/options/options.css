@@ -1,0 +1,157 @@
+:root {
+  color-scheme: light dark;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  line-height: 1.45;
+  color: #172033;
+  background: #f5f7fb;
+}
+
+body {
+  margin: 0;
+}
+
+.page {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 32px 18px;
+  box-sizing: border-box;
+}
+
+.panel {
+  width: min(680px, 100%);
+  padding: 28px;
+  border: 1px solid #d9e0ea;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 16px 44px rgba(36, 44, 64, .12);
+}
+
+h1 {
+  margin: 0 0 10px;
+  font-size: 28px;
+  font-weight: 650;
+}
+
+.intro {
+  margin: 0 0 24px;
+  max-width: 58ch;
+  color: #4a5568;
+}
+
+label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 650;
+}
+
+.field-row {
+  display: flex;
+  gap: 10px;
+}
+
+input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid #b9c3d2;
+  border-radius: 6px;
+  box-sizing: border-box;
+  font: inherit;
+}
+
+button,
+.link-button {
+  min-height: 42px;
+  padding: 8px 16px;
+  border: 1px solid #1f6feb;
+  border-radius: 6px;
+  background: #1f6feb;
+  color: #ffffff;
+  cursor: pointer;
+  font: 650 14px "Segoe UI", system-ui, sans-serif;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+button:hover,
+.link-button:hover {
+  background: #185abd;
+}
+
+button.secondary {
+  border-color: #b9c3d2;
+  background: #ffffff;
+  color: #172033;
+}
+
+button.secondary:hover {
+  background: #eef2f7;
+}
+
+.status {
+  min-height: 24px;
+  margin: 16px 0 0;
+  color: #305f19;
+}
+
+.status.error {
+  color: #a51d2d;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.actions[hidden] {
+  display: none;
+}
+
+@media (max-width: 560px) {
+  .field-row {
+    flex-direction: column;
+  }
+
+  button,
+  .link-button {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color: #edf2f7;
+    background: #111827;
+  }
+
+  .panel {
+    border-color: #374151;
+    background: #1f2937;
+    box-shadow: none;
+  }
+
+  .intro {
+    color: #cbd5e1;
+  }
+
+  input {
+    border-color: #4b5563;
+    background: #111827;
+    color: #edf2f7;
+  }
+
+  button.secondary {
+    border-color: #4b5563;
+    background: #1f2937;
+    color: #edf2f7;
+  }
+
+  button.secondary:hover {
+    background: #374151;
+  }
+}

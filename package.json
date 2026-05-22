@@ -1,0 +1,9 @@
+{
+  "private": true,
+  "scripts": {
+    "check:userscript": "node --check userscript/immich-bridge.user.js",
+    "check:extension": "node --check browser-extension/background.js && node --check browser-extension/content/immich-bridge-content.js && node --check browser-extension/options/options.js",
+    "lint:extension": "npx --yes web-ext lint --source-dir browser-extension",
+    "build:extension": "npx --yes web-ext build --source-dir browser-extension --artifacts-dir artifacts/browser-extension --overwrite-dest"
+  }
+}
