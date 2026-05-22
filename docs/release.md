@@ -13,6 +13,7 @@ Before creating a release tag, update:
 - `Version`, `AssemblyVersion`, and `FileVersion` in `src/ImmichBridge/ImmichBridge.csproj`
 - `@version` in `userscript/immich-bridge.user.js`
 - `version` in `browser-extension/manifest.json`
+- AMO submission notes in `browser-extension/amo-metadata.json`, when extension review guidance changes
 - `CHANGELOG.md`
 
 The release workflow rejects tags that do not match the project, userscript, and Firefox extension versions.
@@ -20,8 +21,8 @@ The release workflow rejects tags that do not match the project, userscript, and
 ## Create a Release
 
 ```powershell
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.2.0
+git push origin v0.2.0
 ```
 
 The release workflow publishes:

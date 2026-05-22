@@ -1,0 +1,12 @@
+{
+  "summary": {
+    "en-US": "Adds local file actions to Immich asset pages."
+  },
+  "categories": [
+    "other"
+  ],
+  "version": {
+    "license": "all-rights-reserved",
+    "approval_notes": "This extension injects one toolbar button into the Immich web app origin configured by the user. Local file actions are delegated to the separately installed Immich Bridge desktop companion app through the immich-bridge:// protocol because Firefox extensions cannot directly open Windows Explorer or launch arbitrary desktop applications. The extension stores only the configured Immich origin in local browser storage and does not collect telemetry or send data to external servers."
+  }
+}
