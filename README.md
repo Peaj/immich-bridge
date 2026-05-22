@@ -1,5 +1,12 @@
 # Immich Bridge
 
+[![Release](https://img.shields.io/github/v/release/Peaj/immich-bridge?label=release)](https://github.com/Peaj/immich-bridge/releases/latest)
+[![License](https://img.shields.io/github/license/Peaj/immich-bridge?label=license)](LICENSE)
+[![Last commit](https://img.shields.io/github/last-commit/Peaj/immich-bridge?label=last%20commit)](https://github.com/Peaj/immich-bridge/commits/main)
+[![CI](https://img.shields.io/github/actions/workflow/status/Peaj/immich-bridge/ci.yml?branch=main&label=ci)](https://github.com/Peaj/immich-bridge/actions/workflows/ci.yml)
+![Made with .NET](https://img.shields.io/badge/made%20with-.NET-512BD4)
+![Firefox WebExtension](https://img.shields.io/badge/browser-Firefox%20WebExtension-FF7139)
+
 Immich Bridge is a small Windows helper that adds workstation-native actions to Immich assets. A Firefox WebExtension adds buttons to Immich, and a local .NET helper handles `immich-bridge://` protocol links by mapping Immich server paths to local Windows paths. A Tampermonkey userscript remains available as a fallback for unsupported browsers.
 
 ## Features
@@ -13,14 +20,8 @@ Immich Bridge is a small Windows helper that adds workstation-native actions to 
 - Reject unmapped paths and unknown app ids.
 - Log errors to `%AppData%\ImmichBridge\logs\helper.log`.
 
-## Build and Test
-
-```powershell
-dotnet build .\ImmichBridge.slnx
-dotnet test .\ImmichBridge.slnx
-npm run check:extension
-npm run lint:extension
-```
+> [!NOTE]
+> AI assistance was used during development of this project. Code, design, and release decisions remain reviewed and maintained by the project author.
 
 ## Install
 
@@ -132,6 +133,15 @@ https://raw.githubusercontent.com/Peaj/immich-bridge/main/userscript/immich-brid
 ```
 
 On Immich asset detail pages, the browser integration injects an Immich Bridge icon into the asset toolbar, opens a small action menu, calls `GET /api/assets/{id}` with the current browser session, reads `originalPath`, and launches `immich-bridge://` URLs. The default `Open with...` action uses Windows' native app picker, so it does not need app ids hardcoded in the browser extension or userscript.
+
+## Build and Test
+
+```powershell
+dotnet build .\ImmichBridge.slnx
+dotnet test .\ImmichBridge.slnx
+npm run check:extension
+npm run lint:extension
+```
 
 ## Releases
 
