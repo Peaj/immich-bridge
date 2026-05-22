@@ -1,5 +1,7 @@
 # Immich Bridge
 
+<img width="440" height="192" alt="grafik" align="right" src="https://github.com/user-attachments/assets/1859d9e7-0e3f-491b-af63-a791f182148a" />
+
 [![Release](https://img.shields.io/github/v/release/Peaj/immich-bridge?label=release)](https://github.com/Peaj/immich-bridge/releases/latest)
 [![License](https://img.shields.io/github/license/Peaj/immich-bridge?label=license)](LICENSE)
 [![Last commit](https://img.shields.io/github/last-commit/Peaj/immich-bridge?label=last%20commit)](https://github.com/Peaj/immich-bridge/commits/main)
