@@ -30,7 +30,7 @@
   },
   "browser_specific_settings": {
     "gecko": {
-      "id": "immich-bridge@peaj.github.io",
+      "id": "immich-bridge@peaj.de",
       "data_collection_permissions": {
         "required": [
           "none"
