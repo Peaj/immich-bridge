@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Immich Bridge
 // @namespace    https://github.com/Peaj/immich-bridge
-// @version      0.2.1
+// @version      0.3.0
 // @description  Adds Immich Bridge local workstation actions to Immich asset detail pages.
 // @match        *://*/*
 // @grant        none
