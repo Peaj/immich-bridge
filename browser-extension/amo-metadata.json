@@ -2,6 +2,9 @@
   "summary": {
     "en-US": "Unofficial local file actions for Immich asset pages."
   },
+  "description": {
+    "en-US": "Immich Bridge is an unofficial integration for Immich and is not affiliated with or endorsed by the Immich project.\n\nIt adds a toolbar button to your configured Immich web app so you can reveal mapped local assets in Windows Explorer or open them with desktop applications.\n\nThis add-on requires the Immich Bridge desktop companion app for local file actions. Install the companion app from the latest GitHub release: https://github.com/Peaj/immich-bridge/releases/latest\n\nFirefox extensions cannot directly open Windows Explorer or launch arbitrary desktop applications, so the companion app handles those OS-level actions through the immich-bridge:// protocol.\n\nThe extension only runs on the Immich URL you configure. When you click an Immich Bridge action, it reads the selected Immich asset's original path and passes only that path to the locally installed companion app. It does not send page content, asset paths, telemetry, or any other data to remote servers."
+  },
   "categories": [
     "other"
   ],

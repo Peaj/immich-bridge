@@ -2,8 +2,14 @@
   "private": true,
   "scripts": {
     "check:userscript": "node --check userscript/immich-bridge.user.js",
-    "check:extension": "node --check browser-extension/background.js && node --check browser-extension/content/immich-bridge-content.js && node --check browser-extension/options/options.js",
-    "lint:extension": "npx --yes web-ext lint --source-dir browser-extension",
-    "build:extension": "npx --yes web-ext build --source-dir browser-extension --artifacts-dir artifacts/browser-extension --overwrite-dest"
+    "check:extension": "node --check browser-extension/background.js && node --check browser-extension/content/immich-bridge-content.js && node --check browser-extension/options/options.js && node --check scripts/prepare-chromium-extension.js && node --check scripts/check-chromium-extension.js",
+    "prepare:chromium-extension": "node scripts/prepare-chromium-extension.js",
+    "check:chromium-extension": "npm run prepare:chromium-extension && node scripts/check-chromium-extension.js",
+    "lint:extension": "npm run lint:firefox-extension && npm run check:chromium-extension",
+    "lint:firefox-extension": "npx --yes web-ext lint --source-dir browser-extension",
+    "build:extension": "npm run build:firefox-extension",
+    "build:firefox-extension": "npx --yes web-ext build --source-dir browser-extension --artifacts-dir artifacts/browser-extension --overwrite-dest",
+    "build:chromium-extension": "npm run prepare:chromium-extension && npx --yes web-ext build --source-dir artifacts/chromium-extension/source --artifacts-dir artifacts/chromium-extension --overwrite-dest",
+    "build:extensions": "npm run build:firefox-extension && npm run build:chromium-extension"
   }
 }

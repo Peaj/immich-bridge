@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const extensionApi = globalThis.browser;
+  const extensionApi = globalThis.browser || globalThis.chrome;
   const storageKey = 'immichOrigin';
 
   extensionApi.storage.local.get(storageKey)

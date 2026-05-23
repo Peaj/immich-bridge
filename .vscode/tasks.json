@@ -151,12 +151,56 @@
       "problemMatcher": []
     },
     {
-      "label": "extension: build package",
+      "label": "extension: build Firefox package",
       "type": "process",
       "command": "npm",
       "args": [
         "run",
-        "build:extension"
+        "build:firefox-extension"
+      ],
+      "problemMatcher": [],
+      "dependsOn": [
+        "extension: check syntax",
+        "extension: lint"
+      ],
+      "dependsOrder": "sequence"
+    },
+    {
+      "label": "extension: prepare Chromium source",
+      "type": "process",
+      "command": "npm",
+      "args": [
+        "run",
+        "prepare:chromium-extension"
+      ],
+      "problemMatcher": [],
+      "dependsOn": [
+        "extension: check syntax"
+      ],
+      "dependsOrder": "sequence"
+    },
+    {
+      "label": "extension: build Chromium package",
+      "type": "process",
+      "command": "npm",
+      "args": [
+        "run",
+        "build:chromium-extension"
+      ],
+      "problemMatcher": [],
+      "dependsOn": [
+        "extension: check syntax",
+        "extension: lint"
+      ],
+      "dependsOrder": "sequence"
+    },
+    {
+      "label": "extension: build all packages",
+      "type": "process",
+      "command": "npm",
+      "args": [
+        "run",
+        "build:extensions"
       ],
       "problemMatcher": [],
       "dependsOn": [
@@ -181,6 +225,28 @@
       "dependsOn": [
         "extension: check syntax",
         "extension: lint"
+      ],
+      "dependsOrder": "sequence"
+    },
+    {
+      "label": "extension: run in Chrome",
+      "type": "process",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/run-chromium-extension.ps1",
+        "-WorkspaceFolder",
+        "${workspaceFolder}"
+      ],
+      "isBackground": true,
+      "problemMatcher": [],
+      "dependsOn": [
+        "extension: check syntax",
+        "extension: lint",
+        "extension: prepare Chromium source"
       ],
       "dependsOrder": "sequence"
     },

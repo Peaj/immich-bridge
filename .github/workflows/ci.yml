@@ -39,5 +39,5 @@ jobs:
       - name: Check extension syntax
         run: npm run check:extension
 
-      - name: Lint Firefox extension
+      - name: Lint browser extensions
         run: npm run lint:extension

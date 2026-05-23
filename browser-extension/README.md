@@ -1,6 +1,6 @@
-# Immich Bridge Firefox Extension
+# Immich Bridge Browser Extension
 
-This is the Firefox-first WebExtension package for Immich Bridge. It replaces the Tampermonkey UI injection for supported browsers while keeping the userscript as a fallback.
+This is the WebExtension package for Immich Bridge. It replaces the Tampermonkey UI injection for supported browsers while keeping the userscript as a fallback. Firefox and Chromium packages share the same source files with browser-specific manifests.
 
 Immich Bridge is an unofficial integration for Immich and is not affiliated with or endorsed by the Immich project.
 
@@ -17,10 +17,13 @@ The extension only runs on the Immich URL you configure. When you click an Immic
 ```powershell
 npx --yes web-ext lint --source-dir .\browser-extension
 npx --yes web-ext run --source-dir .\browser-extension
+npm run build:chromium-extension
 ```
 
 After Firefox opens, use the Immich Bridge options page to enter the Immich base URL. The extension requests host permission only for that origin, then injects the toolbar button on Immich asset detail pages.
 
+For Chromium testing, load `artifacts/chromium-extension/source` as an unpacked extension after running `npm run prepare:chromium-extension`.
+
 ## Release Direction
 
-Production Firefox installs should come from the public AMO listing once published. GitHub release ZIPs are for transparency and fallback testing, not silent consumer installation.
+Production Firefox installs should come from the public AMO listing once published. Production Chrome installs should come from the Chrome Web Store once published. GitHub release ZIPs are for transparency and fallback testing, not silent consumer installation.
