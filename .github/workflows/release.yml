@@ -78,6 +78,9 @@ jobs:
       - name: Build Chromium extension
         run: npm run build:chromium-extension
 
+      - name: Build Edge extension
+        run: npm run build:edge-extension
+
       - name: Publish win-x64
         run: >
           dotnet publish .\src\ImmichBridge\ImmichBridge.csproj
@@ -107,8 +110,10 @@ jobs:
           Copy-Item .\userscript\immich-bridge.user.js ".\artifacts\immich-bridge-$version.user.js"
           $builtFirefoxExtension = Get-ChildItem .\artifacts\browser-extension -Filter *.zip | Select-Object -First 1
           $builtChromiumExtension = Get-ChildItem .\artifacts\chromium-extension -Filter *.zip | Select-Object -First 1
+          $builtEdgeExtension = Get-ChildItem .\artifacts\edge-extension -Filter *.zip | Select-Object -First 1
           Copy-Item $builtFirefoxExtension.FullName ".\artifacts\immich-bridge-firefox-$version.zip"
           Copy-Item $builtChromiumExtension.FullName ".\artifacts\immich-bridge-chromium-$version.zip"
+          Copy-Item $builtEdgeExtension.FullName ".\artifacts\immich-bridge-edge-$version.zip"
           Get-ChildItem .\artifacts -File |
             Where-Object { $_.Name -like "*.zip" -or $_.Name -like "*.user.js" } |
             Get-FileHash -Algorithm SHA256 |
@@ -152,4 +157,5 @@ jobs:
             artifacts/immich-bridge-${{ github.ref_name }}.user.js
             artifacts/immich-bridge-firefox-${{ github.ref_name }}.zip
             artifacts/immich-bridge-chromium-${{ github.ref_name }}.zip
+            artifacts/immich-bridge-edge-${{ github.ref_name }}.zip
             artifacts/SHA256SUMS.txt
