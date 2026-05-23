@@ -2,9 +2,12 @@
 
 All notable changes to Immich Bridge are tracked here.
 
-## 0.2.1
+## Unreleased
 
 - Added a Chromium extension package for Chrome Web Store submission and unpacked Chrome testing.
+
+## 0.2.1
+
 - Updated Firefox add-on metadata for AMO review.
 - Added explicit unofficial Immich integration disclosure.
 - Declared local-only selected asset path handling under Firefox add-on data permissions.
