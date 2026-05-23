@@ -157,3 +157,7 @@ Immich Bridge uses semantic versioning and GitHub Releases. Release tags use `vX
 ## Security Model
 
 Immich Bridge never accepts executable paths or shell arguments from the URL. URLs can only name an action, an optional configured app id, and an Immich path. Paths must match a configured mapping, and the mapped local file must exist by default before anything is launched.
+
+## Privacy
+
+See [PRIVACY.md](PRIVACY.md).

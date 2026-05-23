@@ -100,6 +100,7 @@ jobs:
           Copy-Item .\userscript\immich-bridge.user.js .\artifacts\ImmichBridge-win-x64\userscript\immich-bridge.user.js
           Copy-Item .\browser-extension\* .\artifacts\ImmichBridge-win-x64\browser-extension -Recurse
           Copy-Item .\README.md .\artifacts\ImmichBridge-win-x64\README.md
+          Copy-Item .\PRIVACY.md .\artifacts\ImmichBridge-win-x64\PRIVACY.md
           Copy-Item .\CHANGELOG.md .\artifacts\ImmichBridge-win-x64\CHANGELOG.md
 
       - name: Package release artifacts
