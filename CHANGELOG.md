@@ -4,7 +4,8 @@ All notable changes to Immich Bridge are tracked here.
 
 ## Unreleased
 
-- Added a Chromium extension package for Chrome Web Store submission and unpacked Chrome testing.
+- Added Chromium-family extension packages for Chrome Web Store and Microsoft Edge Add-ons submission.
+- Added local Chrome and Edge extension launch tasks for unpacked browser testing.
 
 ## 0.2.1
 

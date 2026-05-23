@@ -195,6 +195,35 @@
       "dependsOrder": "sequence"
     },
     {
+      "label": "extension: prepare Edge source",
+      "type": "process",
+      "command": "npm",
+      "args": [
+        "run",
+        "prepare:edge-extension"
+      ],
+      "problemMatcher": [],
+      "dependsOn": [
+        "extension: check syntax"
+      ],
+      "dependsOrder": "sequence"
+    },
+    {
+      "label": "extension: build Edge package",
+      "type": "process",
+      "command": "npm",
+      "args": [
+        "run",
+        "build:edge-extension"
+      ],
+      "problemMatcher": [],
+      "dependsOn": [
+        "extension: check syntax",
+        "extension: lint"
+      ],
+      "dependsOrder": "sequence"
+    },
+    {
       "label": "extension: build all packages",
       "type": "process",
       "command": "npm",
@@ -206,6 +235,28 @@
       "dependsOn": [
         "extension: check syntax",
         "extension: lint"
+      ],
+      "dependsOrder": "sequence"
+    },
+    {
+      "label": "extension: run in Edge",
+      "type": "process",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/run-edge-extension.ps1",
+        "-WorkspaceFolder",
+        "${workspaceFolder}"
+      ],
+      "isBackground": true,
+      "problemMatcher": [],
+      "dependsOn": [
+        "extension: check syntax",
+        "extension: lint",
+        "extension: prepare Edge source"
       ],
       "dependsOrder": "sequence"
     },

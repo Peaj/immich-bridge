@@ -17,7 +17,7 @@ Before creating a release tag, update:
 - AMO submission notes in `browser-extension/amo-metadata.json`, when extension review guidance changes
 - `CHANGELOG.md`
 
-The release workflow rejects tags that do not match the project, userscript, Firefox extension, and Chromium extension versions.
+The release workflow rejects tags that do not match the project, userscript, Firefox extension, and Chromium-family extension versions. Chrome and Edge packages both use `browser-extension/manifest.chromium.json`.
 
 ## Create a Release
 
@@ -32,12 +32,13 @@ The release workflow publishes:
 - `immich-bridge-vX.Y.Z.user.js`
 - `immich-bridge-firefox-vX.Y.Z.zip`
 - `immich-bridge-chromium-vX.Y.Z.zip`
+- `immich-bridge-edge-vX.Y.Z.zip`
 - `SHA256SUMS.txt`
 
 ## Installer Direction
 
 The first release uses a self-contained `win-x64` ZIP from GitHub Releases. The app handles first-run setup, config creation, and protocol registration.
 
-Production Firefox extension installs should use the public Mozilla Add-ons listing. Production Chrome installs should use the Chrome Web Store once published. The GitHub extension ZIPs are included for source transparency and local testing. Consumer setup should open the store listing and must not attempt silent extension installation. Edge packages should be added after the Chromium package stabilizes and should also use public store listings for normal users.
+Production Firefox extension installs should use the public Mozilla Add-ons listing. Production Chrome installs should use the Chrome Web Store once published. Production Edge installs should use Microsoft Edge Add-ons once published. The GitHub extension ZIPs are included for source transparency and local testing. Consumer setup should open the store listing and must not attempt silent extension installation.
 
 MSIX packaging and winget submission are planned after package identity, signing, and upgrade behavior are stable.

@@ -9,6 +9,7 @@
 ![Made with .NET](https://img.shields.io/badge/made%20with-.NET-512BD4)
 ![Firefox WebExtension](https://img.shields.io/badge/browser-Firefox%20WebExtension-FF7139)
 ![Chromium WebExtension](https://img.shields.io/badge/browser-Chromium%20WebExtension-4285F4)
+![Edge Add-on](https://img.shields.io/badge/browser-Edge%20Add--on-0078D7)
 
 Immich Bridge is a small Windows helper that adds workstation-native actions to Immich assets. Browser extensions add buttons to Immich, and a local .NET helper handles `immich-bridge://` protocol links by mapping Immich server paths to local Windows paths. A Tampermonkey userscript remains available as a fallback for unsupported browsers.
 
@@ -129,7 +130,7 @@ https://addons.mozilla.org/firefox/addon/immich-bridge/
 
 After installing, open the Immich Bridge extension options page, enter your Immich base URL, and grant access for that site. The extension stores only that local browser setting and injects the toolbar button only on the configured Immich origin.
 
-The Chromium extension package is built as `immich-bridge-chromium-vX.Y.Z.zip` for Chrome Web Store submission and local unpacked testing.
+The Chromium-family extension packages are built as `immich-bridge-chromium-vX.Y.Z.zip` for Chrome Web Store submission and `immich-bridge-edge-vX.Y.Z.zip` for Microsoft Edge Add-ons submission.
 
 For unsupported browsers, store-review delays, or users who prefer Tampermonkey, install `userscript/immich-bridge.user.js` in Tampermonkey. You can use the copy bundled in the release ZIP, the `.user.js` release asset, or the latest script directly from GitHub:
 
@@ -151,7 +152,7 @@ npm run build:extensions
 
 ## Releases
 
-Immich Bridge uses semantic versioning and GitHub Releases. Release tags use `vX.Y.Z`; the release workflow verifies that the tag, app version, userscript version, Firefox extension version, and Chromium extension version match. See `docs/release.md` for the release process.
+Immich Bridge uses semantic versioning and GitHub Releases. Release tags use `vX.Y.Z`; the release workflow verifies that the tag, app version, userscript version, Firefox extension version, and Chromium-family extension version match. See `docs/release.md` for the release process.
 
 ## Security Model
 
