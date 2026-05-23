@@ -229,6 +229,28 @@
       "dependsOrder": "sequence"
     },
     {
+      "label": "extension: run in Chrome",
+      "type": "process",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/run-chromium-extension.ps1",
+        "-WorkspaceFolder",
+        "${workspaceFolder}"
+      ],
+      "isBackground": true,
+      "problemMatcher": [],
+      "dependsOn": [
+        "extension: check syntax",
+        "extension: lint",
+        "extension: prepare Chromium source"
+      ],
+      "dependsOrder": "sequence"
+    },
+    {
       "label": "publish: win-x64 single file",
       "type": "process",
       "command": "dotnet",
