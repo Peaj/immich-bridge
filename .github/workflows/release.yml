@@ -35,6 +35,8 @@ jobs:
           $userscriptVersion = (Select-String -Path .\userscript\immich-bridge.user.js -Pattern '^// @version\s+(.+)$').Matches[0].Groups[1].Value.Trim()
           $extensionManifest = Get-Content .\browser-extension\manifest.json -Raw | ConvertFrom-Json
           $extensionVersion = $extensionManifest.version
+          $chromiumManifest = Get-Content .\browser-extension\manifest.chromium.json -Raw | ConvertFrom-Json
+          $chromiumExtensionVersion = $chromiumManifest.version
 
           if ($projectVersion -ne $tagVersion) {
             throw "Tag version $tagVersion does not match project version $projectVersion."
@@ -46,6 +48,10 @@ jobs:
 
           if ($extensionVersion -ne $tagVersion) {
             throw "Tag version $tagVersion does not match Firefox extension version $extensionVersion."
+          }
+
+          if ($chromiumExtensionVersion -ne $tagVersion) {
+            throw "Tag version $tagVersion does not match Chromium extension version $chromiumExtensionVersion."
           }
 
       - name: Restore
@@ -63,11 +69,14 @@ jobs:
       - name: Check extension syntax
         run: npm run check:extension
 
-      - name: Lint Firefox extension
+      - name: Lint browser extensions
         run: npm run lint:extension
 
       - name: Build Firefox extension
-        run: npm run build:extension
+        run: npm run build:firefox-extension
+
+      - name: Build Chromium extension
+        run: npm run build:chromium-extension
 
       - name: Publish win-x64
         run: >
@@ -96,8 +105,10 @@ jobs:
           $version = "${{ github.ref_name }}"
           Compress-Archive -Path .\artifacts\ImmichBridge-win-x64\* -DestinationPath ".\artifacts\ImmichBridge-win-x64-$version.zip" -Force
           Copy-Item .\userscript\immich-bridge.user.js ".\artifacts\immich-bridge-$version.user.js"
-          $builtExtension = Get-ChildItem .\artifacts\browser-extension -Filter *.zip | Select-Object -First 1
-          Copy-Item $builtExtension.FullName ".\artifacts\immich-bridge-firefox-$version.zip"
+          $builtFirefoxExtension = Get-ChildItem .\artifacts\browser-extension -Filter *.zip | Select-Object -First 1
+          $builtChromiumExtension = Get-ChildItem .\artifacts\chromium-extension -Filter *.zip | Select-Object -First 1
+          Copy-Item $builtFirefoxExtension.FullName ".\artifacts\immich-bridge-firefox-$version.zip"
+          Copy-Item $builtChromiumExtension.FullName ".\artifacts\immich-bridge-chromium-$version.zip"
           Get-ChildItem .\artifacts -File |
             Where-Object { $_.Name -like "*.zip" -or $_.Name -like "*.user.js" } |
             Get-FileHash -Algorithm SHA256 |
@@ -140,4 +151,5 @@ jobs:
             artifacts/ImmichBridge-win-x64-${{ github.ref_name }}.zip
             artifacts/immich-bridge-${{ github.ref_name }}.user.js
             artifacts/immich-bridge-firefox-${{ github.ref_name }}.zip
+            artifacts/immich-bridge-chromium-${{ github.ref_name }}.zip
             artifacts/SHA256SUMS.txt

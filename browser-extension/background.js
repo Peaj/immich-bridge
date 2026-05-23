@@ -3,7 +3,8 @@
 
   const contentScriptId = 'immich-bridge-content';
   const storageKey = 'immichOrigin';
-  const extensionApi = globalThis.browser;
+  const extensionApi = globalThis.browser || globalThis.chrome;
+  const isFirefox = Boolean(globalThis.browser);
 
   function originToPattern(origin) {
     const url = new URL(origin);
@@ -67,14 +68,21 @@
 
   extensionApi.permissions.onRemoved.addListener(configureFromStorage);
 
-  extensionApi.runtime.onMessage.addListener((message) => {
+  extensionApi.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (!message || message.type !== 'immich-bridge:configure-origin') {
       return undefined;
     }
 
-    return registerContentScript(message.origin || null)
+    const response = registerContentScript(message.origin || null)
       .then(() => ({ ok: true }))
       .catch(error => ({ ok: false, error: error.message || String(error) }));
+
+    if (isFirefox) {
+      return response;
+    }
+
+    response.then(sendResponse);
+    return true;
   });
 
   configureFromStorage();
