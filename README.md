@@ -7,9 +7,6 @@
 [![Last commit](https://img.shields.io/github/last-commit/Peaj/immich-bridge?label=last%20commit)](https://github.com/Peaj/immich-bridge/commits/main)
 [![CI](https://img.shields.io/github/actions/workflow/status/Peaj/immich-bridge/ci.yml?branch=main&label=ci)](https://github.com/Peaj/immich-bridge/actions/workflows/ci.yml)
 ![Made with .NET](https://img.shields.io/badge/made%20with-.NET-512BD4)
-![Firefox WebExtension](https://img.shields.io/badge/browser-Firefox%20WebExtension-FF7139)
-![Chromium WebExtension](https://img.shields.io/badge/browser-Chromium%20WebExtension-4285F4)
-![Edge Add-on](https://img.shields.io/badge/browser-Edge%20Add--on-0078D7)
 
 Immich Bridge is a small Windows helper that adds workstation-native actions to Immich assets. Browser extensions add buttons to Immich, and a local .NET helper handles `immich-bridge://` protocol links by mapping Immich server paths to local Windows paths. A Tampermonkey userscript remains available as a fallback for unsupported browsers.
 
@@ -38,9 +35,21 @@ On first launch, Immich Bridge opens a setup wizard that:
 - lets you choose the matching local Windows folder, for example `M:\Fotos`;
 - optionally validates a sample Immich asset path;
 - registers `immich-bridge://` under `HKEY_CURRENT_USER`;
-- points you to the Firefox add-on, with the Tampermonkey userscript as a fallback.
+- points you to the browser add-ons, with the Tampermonkey userscript as a fallback.
 
 No admin rights are required for protocol registration.
+
+### Browser Add-ons
+
+Click your browser to install the add-on:
+
+<p>
+  <a href="https://chromewebstore.google.com/detail/ohghjemcjnaickehejdokfmjphpjoiag"><img alt="Available in the Chrome Web Store" src="browser-extension/store-badges/chrome-web-store.png" height="48"></a>
+  <a href="https://microsoftedge.microsoft.com/addons/detail/immich-bridge/bgipocndkokcllfjgmiicakhlbddnjij"><img alt="Get it from Microsoft Edge" src="browser-extension/store-badges/edge-add-ons.png" height="48"></a>
+  <a href="https://addons.mozilla.org/en-US/firefox/addon/immich-bridge/"><img alt="Get the add-on for Firefox" src="browser-extension/store-badges/firefox-add-ons.png" height="48"></a>
+</p>
+
+After installing, open the Immich Bridge extension options page, enter your Immich base URL, and grant access for that site. The extension stores only that local browser setting and injects the toolbar button only on the configured Immich origin.
 
 ## Configure
 
@@ -121,16 +130,6 @@ immich-bridge://reveal?path=%2Fmnt%2Fimmich-external%2Fphotos%2F2024%2Fimg.jpg
 immich-bridge://open?path=%2Fmnt%2Fimmich-external%2Fphotos%2F2024%2Fimg.jpg
 immich-bridge://open?app=photoshop&path=%2Fmnt%2Fimmich-external%2Fphotos%2F2024%2Fimg.jpg
 ```
-
-Install the Firefox add-on from Mozilla Add-ons:
-
-```text
-https://addons.mozilla.org/firefox/addon/immich-bridge/
-```
-
-After installing, open the Immich Bridge extension options page, enter your Immich base URL, and grant access for that site. The extension stores only that local browser setting and injects the toolbar button only on the configured Immich origin.
-
-The Chromium-family extension packages are built as `immich-bridge-chromium-vX.Y.Z.zip` for Chrome Web Store submission and `immich-bridge-edge-vX.Y.Z.zip` for Microsoft Edge Add-ons submission.
 
 For unsupported browsers, store-review delays, or users who prefer Tampermonkey, install `userscript/immich-bridge.user.js` in Tampermonkey. You can use the copy bundled in the release ZIP, the `.user.js` release asset, or the latest script directly from GitHub:
 
