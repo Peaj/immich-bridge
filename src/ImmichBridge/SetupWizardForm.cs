@@ -6,6 +6,8 @@ namespace ImmichBridge;
 
 public sealed class SetupWizardForm : Form
 {
+    private const string ChromeAddonUrl = "https://chromewebstore.google.com/detail/ohghjemcjnaickehejdokfmjphpjoiag";
+    private const string EdgeAddonUrl = "https://microsoftedge.microsoft.com/addons/detail/immich-bridge/bgipocndkokcllfjgmiicakhlbddnjij";
     private const string FirefoxAddonUrl = "https://addons.mozilla.org/firefox/addon/immich-bridge/";
     private const string UserscriptUrl = "https://raw.githubusercontent.com/Peaj/immich-bridge/main/userscript/immich-bridge.user.js";
     private const string TampermonkeyUrl = "https://www.tampermonkey.net/";
@@ -181,13 +183,7 @@ public sealed class SetupWizardForm : Form
     {
         var content = CreateContentLayout("Ready to Use");
         var body = CreateBodyLabel(
-            "Immich Bridge is configured. The last step is adding the browser integration to Immich.\n\n1. Install the Firefox add-on.\n2. Enter your Immich URL in the add-on options page and approve access for that site.\n3. Refresh Immich and open an asset. The Immich Bridge button appears in the asset toolbar.\n\nIf the Firefox add-on is not available yet, or you use an unsupported browser, use the Tampermonkey userscript fallback.");
-
-        var installFirefoxAddonButton = new Button { Text = "Install Firefox add-on", AutoSize = true };
-        installFirefoxAddonButton.Click += (_, _) =>
-        {
-            OpenUrl(FirefoxAddonUrl);
-        };
+            "Immich Bridge is configured. The last step is adding the browser integration to Immich.\n\n1. Install the add-on for your browser.\n2. Enter your Immich URL in the add-on options page and approve access for that site.\n3. Refresh Immich and open an asset. The Immich Bridge button appears in the asset toolbar.\n\nIf your browser is unsupported, use the Tampermonkey userscript fallback.");
 
         var openUserscriptButton = new Button { Text = "Open userscript fallback", AutoSize = true };
         openUserscriptButton.Click += (_, _) =>
@@ -204,7 +200,21 @@ public sealed class SetupWizardForm : Form
             AutoSize = true,
             Padding = new Padding(0, 18, 0, 0)
         };
-        flow.Controls.Add(installFirefoxAddonButton);
+        flow.Controls.Add(CreateStoreBadgeButton(
+            "chrome-web-store.png",
+            "Available in the Chrome Web Store",
+            "Install Chrome add-on",
+            ChromeAddonUrl));
+        flow.Controls.Add(CreateStoreBadgeButton(
+            "edge-add-ons.png",
+            "Get it from Microsoft Edge",
+            "Install Edge add-on",
+            EdgeAddonUrl));
+        flow.Controls.Add(CreateStoreBadgeButton(
+            "firefox-add-ons.png",
+            "Get the add-on for Firefox",
+            "Install Firefox add-on",
+            FirefoxAddonUrl));
         flow.Controls.Add(openUserscriptButton);
 
         content.Controls.Add(body);
@@ -275,6 +285,58 @@ public sealed class SetupWizardForm : Form
             OpenUrl(url);
         };
         return link;
+    }
+
+    private static Control CreateStoreBadgeButton(string fileName, string accessibleName, string fallbackText, string url)
+    {
+        var badgePath = FindStoreBadgePath(fileName);
+        if (badgePath is null)
+        {
+            var fallbackButton = new Button
+            {
+                Text = fallbackText,
+                AutoSize = true,
+                AccessibleName = accessibleName
+            };
+            fallbackButton.Click += (_, _) => OpenUrl(url);
+            return fallbackButton;
+        }
+
+        var image = LoadImageWithoutLockingFile(badgePath);
+        const int badgeHeight = 48;
+        var badgeWidth = Math.Max(120, (int)Math.Round(image.Width * (badgeHeight / (double)image.Height)));
+
+        var pictureBox = new PictureBox
+        {
+            Image = image,
+            Size = new Size(badgeWidth, badgeHeight),
+            SizeMode = PictureBoxSizeMode.Zoom,
+            Cursor = Cursors.Hand,
+            AccessibleName = accessibleName,
+            AccessibleRole = AccessibleRole.PushButton,
+            Margin = new Padding(0, 0, 10, 10)
+        };
+        pictureBox.Click += (_, _) => OpenUrl(url);
+        return pictureBox;
+    }
+
+    private static Image LoadImageWithoutLockingFile(string path)
+    {
+        using var stream = File.OpenRead(path);
+        using var image = Image.FromStream(stream);
+        return new Bitmap(image);
+    }
+
+    private static string? FindStoreBadgePath(string fileName)
+    {
+        var candidates = new[]
+        {
+            Path.Combine(AppContext.BaseDirectory, "browser-extension", "store-badges", fileName),
+            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "browser-extension", "store-badges", fileName)),
+            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "browser-extension", "store-badges", fileName))
+        };
+
+        return candidates.FirstOrDefault(File.Exists);
     }
 
     private static void OpenUrl(string url)
@@ -448,7 +510,8 @@ public sealed class SetupWizardForm : Form
         var candidates = new[]
         {
             Path.Combine(AppContext.BaseDirectory, "userscript", "immich-bridge.user.js"),
-            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "userscript", "immich-bridge.user.js"))
+            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "userscript", "immich-bridge.user.js")),
+            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "userscript", "immich-bridge.user.js"))
         };
 
         return candidates.FirstOrDefault(File.Exists);
