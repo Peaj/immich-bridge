@@ -18,6 +18,9 @@ It consists of a browser add-on and a small Windows companion app. The add-on ad
 
 Immich Bridge is useful when Immich stores assets from folders that are also available on your Windows workstation, for example through a mapped drive, SMB share, external disk, or synced folder.
 
+> [!WARNING]
+> Immich Bridge is intended for external libraries or other folders you deliberately manage outside Immich. If you map Immich's internal upload/library storage, treat those files as read-only from desktop apps: do not overwrite, rename, move, or delete them outside Immich. Opening an internal-library asset to inspect it or to save a separate copy elsewhere should be fine, but editing the original file in place can conflict with Immich's storage management.
+
 > [!NOTE]
 > AI assistance was used during development of this project. Code, design, and release decisions remain reviewed and maintained by the project author.
 

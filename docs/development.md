@@ -36,6 +36,8 @@ The internal config file is stored at `%AppData%\ImmichBridge\config.json`:
 
 The browser add-ons currently expose `Reveal in Explorer` and `Open with...`. Direct app ids are supported by the companion app protocol but are not exposed from the Immich browser UI at the moment.
 
+Prefer mappings that point to external libraries or other user-managed media folders. Avoid mapping Immich's internal upload/library storage unless you treat the mapped files as read-only from desktop apps.
+
 ## Companion App Commands
 
 Register the protocol handler:
