@@ -6,7 +6,6 @@
 [![License](https://img.shields.io/github/license/Peaj/immich-bridge?label=license)](LICENSE)
 [![Last commit](https://img.shields.io/github/last-commit/Peaj/immich-bridge?label=last%20commit)](https://github.com/Peaj/immich-bridge/commits/main)
 [![CI](https://img.shields.io/github/actions/workflow/status/Peaj/immich-bridge/ci.yml?branch=main&label=ci)](https://github.com/Peaj/immich-bridge/actions/workflows/ci.yml)
-![Made with .NET](https://img.shields.io/badge/made%20with-.NET-512BD4)
 
 Immich Bridge is a small Windows helper that adds workstation-native actions to Immich assets. Browser extensions add buttons to Immich, and a local .NET helper handles `immich-bridge://` protocol links by mapping Immich server paths to local Windows paths. A Tampermonkey userscript remains available as a fallback for unsupported browsers.
 
