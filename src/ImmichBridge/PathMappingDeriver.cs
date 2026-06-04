@@ -42,6 +42,18 @@ public static class PathMappingDeriver
         return new DerivedPathMapping(remotePrefix, localPrefix, sharedRelativePath);
     }
 
+    public static string GetRemoteFileName(string immichFilePath)
+    {
+        var remotePath = NormalizeImmichPath(immichFilePath);
+        var fileName = SplitRemotePath(remotePath).LastOrDefault();
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            throw new InvalidOperationException("Immich file path must include a file name.");
+        }
+
+        return fileName;
+    }
+
     private static string NormalizeImmichPath(string path)
     {
         var normalized = Unquote(path).Replace('\\', '/').Trim();

@@ -105,7 +105,7 @@ public sealed class SetupWizardForm : Form
     {
         var content = CreateContentLayout("Path Mapping");
         var body = CreateBodyLabel(
-            "In Immich, open an asset, expand Details, click Show file location, and copy the full file path. Then choose the same file on this Windows computer. Immich Bridge will derive and validate the mapping automatically.");
+            "In Immich, open an asset, expand Details, click Show file location, and copy the full file path. Then choose the matching local file. If that folder has many files, you can choose the folder that contains it instead. Immich Bridge will derive and validate the mapping automatically.");
 
         samplePathBox.PlaceholderText = "/external/fotos/2026/album/photo.jpg";
         samplePathBox.Anchor = AnchorStyles.Left | AnchorStyles.Right;
@@ -119,22 +119,11 @@ public sealed class SetupWizardForm : Form
         localPrefixBox.ReadOnly = true;
         localPrefixBox.Anchor = AnchorStyles.Left | AnchorStyles.Right;
 
-        var browseButton = new Button { Text = "Browse...", AutoSize = true };
-        browseButton.Click += (_, _) =>
-        {
-            using var dialog = new OpenFileDialog
-            {
-                Title = "Choose the matching local file",
-                CheckFileExists = true,
-                Multiselect = false
-            };
+        var chooseFileButton = new Button { Text = "Choose file...", AutoSize = true };
+        chooseFileButton.Click += (_, _) => ChooseMatchingLocalFile();
 
-            if (dialog.ShowDialog(this) == DialogResult.OK)
-            {
-                localFilePathBox.Text = dialog.FileName;
-                TryDeriveMapping(false);
-            }
-        };
+        var chooseFolderButton = new Button { Text = "Choose folder...", AutoSize = true };
+        chooseFolderButton.Click += (_, _) => ChooseContainingLocalFolder();
 
         testRevealButton.Text = "Test Reveal";
         testRevealButton.AutoSize = true;
@@ -145,37 +134,95 @@ public sealed class SetupWizardForm : Form
         {
             Dock = DockStyle.Top,
             AutoSize = true,
-            ColumnCount = 3,
+            ColumnCount = 4,
             RowCount = 6,
             Padding = new Padding(0, 18, 0, 0)
         };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 130));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.Controls.Add(new Label { Text = "Immich file path", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 0);
         layout.Controls.Add(samplePathBox, 1, 0);
         layout.SetColumnSpan(samplePathBox, 2);
-        layout.Controls.Add(new Label { Text = "Local file", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 1);
+        layout.Controls.Add(new Label { Text = "Local match", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 1);
         layout.Controls.Add(localFilePathBox, 1, 1);
-        layout.Controls.Add(browseButton, 2, 1);
+        layout.Controls.Add(chooseFileButton, 2, 1);
+        layout.Controls.Add(chooseFolderButton, 3, 1);
         layout.Controls.Add(new Label { Text = "Immich prefix", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 2);
         layout.Controls.Add(remotePrefixBox, 1, 2);
-        layout.SetColumnSpan(remotePrefixBox, 2);
+        layout.SetColumnSpan(remotePrefixBox, 3);
         layout.Controls.Add(new Label { Text = "Local folder", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 3);
         layout.Controls.Add(localPrefixBox, 1, 3);
-        layout.SetColumnSpan(localPrefixBox, 2);
+        layout.SetColumnSpan(localPrefixBox, 3);
         layout.Controls.Add(testRevealButton, 1, 4);
         validationLabel.AutoSize = true;
         validationLabel.MaximumSize = new Size(640, 0);
         validationLabel.Padding = new Padding(0, 10, 0, 0);
-        layout.SetColumnSpan(validationLabel, 3);
+        layout.SetColumnSpan(validationLabel, 4);
         layout.Controls.Add(validationLabel, 0, 5);
 
         content.Controls.Add(body);
         content.Controls.Add(layout);
         return CreatePage(content);
+    }
+
+    private void ChooseMatchingLocalFile()
+    {
+        using var dialog = new OpenFileDialog
+        {
+            Title = "Choose the matching local file",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+
+        if (dialog.ShowDialog(this) == DialogResult.OK)
+        {
+            localFilePathBox.Text = dialog.FileName;
+            TryDeriveMapping(false);
+        }
+    }
+
+    private void ChooseContainingLocalFolder()
+    {
+        string fileName;
+        try
+        {
+            fileName = PathMappingDeriver.GetRemoteFileName(samplePathBox.Text);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Immich Bridge", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        using var dialog = new FolderBrowserDialog
+        {
+            Description = $"Choose the local folder that contains {fileName}",
+            UseDescriptionForTitle = true
+        };
+
+        if (dialog.ShowDialog(this) != DialogResult.OK)
+        {
+            return;
+        }
+
+        var localFilePath = Path.Combine(dialog.SelectedPath, fileName);
+        if (!File.Exists(localFilePath))
+        {
+            MessageBox.Show(
+                this,
+                $"The selected folder does not contain {fileName}. Choose the folder that contains the matching local file.",
+                "Immich Bridge",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+            return;
+        }
+
+        localFilePathBox.Text = localFilePath;
+        TryDeriveMapping(false);
     }
 
     private Panel CreateProtocolPage()
@@ -487,7 +534,7 @@ public sealed class SetupWizardForm : Form
             ResetSampleValidation();
             if (string.IsNullOrWhiteSpace(samplePathBox.Text) || string.IsNullOrWhiteSpace(localFilePathBox.Text))
             {
-                validationLabel.Text = "Paste the Immich file path and choose the matching local file.";
+                validationLabel.Text = "Paste the Immich file path, then choose the matching local file or the folder that contains it.";
                 return false;
             }
 

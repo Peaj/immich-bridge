@@ -56,4 +56,12 @@ public sealed class PathMappingDeriverTests
 
         Assert.Contains("same file name", exception.Message);
     }
+
+    [Fact]
+    public void GetRemoteFileName_ReturnsFileNameFromImmichPath()
+    {
+        var fileName = PathMappingDeriver.GetRemoteFileName("\"/external/fotos/2026/album/image.jpg\"");
+
+        Assert.Equal("image.jpg", fileName);
+    }
 }
