@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Drawing;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 namespace ImmichBridge;
@@ -42,6 +43,7 @@ public sealed class SetupWizardForm : Form
         this.executablePath = executablePath;
 
         Text = "Immich Bridge Setup";
+        Icon = TryLoadWindowIcon();
         StartPosition = FormStartPosition.CenterScreen;
         MinimumSize = new Size(680, 460);
         Size = new Size(760, 520);
@@ -71,8 +73,31 @@ public sealed class SetupWizardForm : Form
     private Panel CreateWelcomePage()
     {
         var content = CreateContentLayout("Welcome to Immich Bridge");
-        content.Controls.Add(CreateBodyLabel(
-            "Immich Bridge connects your Immich web app to files on this Windows computer.\n\nAfter setup, Immich gets a small toolbar button for local actions like revealing the original file in Explorer or opening it with a desktop app. The setup only needs to know how Immich's server paths map to your Windows folders."));
+        var introLayout = new TableLayoutPanel
+        {
+            Dock = DockStyle.Top,
+            AutoSize = false,
+            Height = 210,
+            ColumnCount = 2,
+            RowCount = 1
+        };
+        introLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 46));
+        introLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 54));
+        introLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        var body = CreateBodyLabel(
+            "Immich Bridge connects your Immich web app to files on this Windows computer.\n\nAfter setup, Immich gets a small toolbar button for local actions like revealing the original file in Explorer or opening it with a desktop app. The setup only needs to know how Immich's server paths map to your Windows folders.");
+        body.MaximumSize = new Size(300, 0);
+        body.Dock = DockStyle.Fill;
+        introLayout.Controls.Add(body, 0, 0);
+
+        var promoImage = CreatePromoTitleImage();
+        if (promoImage is not null)
+        {
+            introLayout.Controls.Add(promoImage, 1, 0);
+        }
+
+        content.Controls.Add(introLayout);
         return CreatePage(content);
     }
 
@@ -289,7 +314,7 @@ public sealed class SetupWizardForm : Form
 
     private static Control CreateStoreBadgeButton(string fileName, string accessibleName, string fallbackText, string url)
     {
-        var badgePath = FindStoreBadgePath(fileName);
+        var badgePath = FindBrowserExtensionAssetPath("store-badges", fileName);
         if (badgePath is null)
         {
             var fallbackButton = new Button
@@ -320,6 +345,52 @@ public sealed class SetupWizardForm : Form
         return pictureBox;
     }
 
+    private static PictureBox? CreatePromoTitleImage()
+    {
+        var imagePath = FindBrowserExtensionAssetPath("icons", "immich-bridge-promo-title.png");
+        if (imagePath is null)
+        {
+            return null;
+        }
+
+        return new PictureBox
+        {
+            Image = LoadImageWithoutLockingFile(imagePath),
+            SizeMode = PictureBoxSizeMode.Zoom,
+            Dock = DockStyle.Fill,
+            Margin = new Padding(16, 0, 0, 0)
+        };
+    }
+
+    private static Icon? TryLoadWindowIcon()
+    {
+        var iconPath = FindBrowserExtensionAssetPath("icons", "immich-bridge-64.png");
+        if (iconPath is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            using var image = LoadImageWithoutLockingFile(iconPath);
+            using var bitmap = new Bitmap(image, new Size(64, 64));
+            var handle = bitmap.GetHicon();
+            try
+            {
+                using var icon = Icon.FromHandle(handle);
+                return (Icon)icon.Clone();
+            }
+            finally
+            {
+                DestroyIcon(handle);
+            }
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static Image LoadImageWithoutLockingFile(string path)
     {
         using var stream = File.OpenRead(path);
@@ -327,17 +398,29 @@ public sealed class SetupWizardForm : Form
         return new Bitmap(image);
     }
 
-    private static string? FindStoreBadgePath(string fileName)
+    private static string? FindBrowserExtensionAssetPath(params string[] relativePathParts)
     {
-        var candidates = new[]
+        var roots = new[]
         {
-            Path.Combine(AppContext.BaseDirectory, "browser-extension", "store-badges", fileName),
-            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "browser-extension", "store-badges", fileName)),
-            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "browser-extension", "store-badges", fileName))
+            Path.Combine(AppContext.BaseDirectory, "browser-extension"),
+            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "browser-extension")),
+            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "browser-extension"))
         };
 
-        return candidates.FirstOrDefault(File.Exists);
+        foreach (var root in roots)
+        {
+            var path = Path.Combine([root, .. relativePathParts]);
+            if (File.Exists(path))
+            {
+                return path;
+            }
+        }
+
+        return null;
     }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool DestroyIcon(nint hIcon);
 
     private static void OpenUrl(string url)
     {
