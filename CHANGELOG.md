@@ -2,6 +2,14 @@
 
 All notable changes to Immich Bridge are tracked here.
 
+## 0.4.0
+
+- Simplified first-run setup by deriving path mappings from a full Immich file path and the matching local file.
+- Added an optional setup shortcut for selecting the containing local folder when the exact file is hard to find.
+- Added setup branding with the Immich Bridge app icon, welcome-page artwork, and official browser store badges.
+- Added user-facing guidance for treating Immich internal-library files as read-only from desktop apps.
+- Moved advanced configuration, command-line usage, protocol tests, and build details into dedicated documentation.
+
 ## 0.3.0
 
 - Added Chromium-family extension packages for Chrome Web Store and Microsoft Edge Add-ons submission.

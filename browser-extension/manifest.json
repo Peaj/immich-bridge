@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Immich Bridge",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Adds Immich Bridge local workstation actions to Immich asset detail pages.",
   "homepage_url": "https://github.com/Peaj/immich-bridge",
   "permissions": [
