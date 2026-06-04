@@ -30,9 +30,9 @@ Download `ImmichBridge-win-x64-vX.Y.Z.zip` from the [latest GitHub release](http
 
 On first launch, Immich Bridge opens a setup wizard that:
 
-- asks for the Immich remote path prefix, for example `/external/fotos`;
-- lets you choose the matching local Windows folder, for example `M:\Fotos`;
-- optionally validates a sample Immich asset path;
+- asks you to copy a full file path from Immich's asset Details panel;
+- lets you choose the matching local file on your Windows computer;
+- derives and validates the path mapping automatically;
 - sets up the local browser-to-app launcher;
 - points you to the browser add-ons, with the Tampermonkey userscript as a fallback.
 

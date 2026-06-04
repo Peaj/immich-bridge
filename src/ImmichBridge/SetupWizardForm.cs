@@ -25,6 +25,7 @@ public sealed class SetupWizardForm : Form
     private readonly TextBox remotePrefixBox = new();
     private readonly TextBox localPrefixBox = new();
     private readonly TextBox samplePathBox = new();
+    private readonly TextBox localFilePathBox = new();
     private readonly Label validationLabel = new();
     private readonly Label protocolLabel = new();
     private readonly Button testRevealButton = new();
@@ -58,7 +59,6 @@ public sealed class SetupWizardForm : Form
     {
         pages.Add(CreateWelcomePage());
         pages.Add(CreateMappingPage());
-        pages.Add(CreateValidationPage());
         pages.Add(CreateProtocolPage());
         pages.Add(CreateFinishPage());
 
@@ -104,9 +104,17 @@ public sealed class SetupWizardForm : Form
     private Panel CreateMappingPage()
     {
         var content = CreateContentLayout("Path Mapping");
-        var body = CreateBodyLabel("Enter the Immich path prefix exactly as Immich reports it, then choose the matching local Windows folder.");
+        var body = CreateBodyLabel(
+            "In Immich, open an asset, expand Details, click Show file location, and copy the full file path. Then choose the same file on this Windows computer. Immich Bridge will derive and validate the mapping automatically.");
 
-        remotePrefixBox.Text = "/external/fotos";
+        samplePathBox.PlaceholderText = "/external/fotos/2026/album/photo.jpg";
+        samplePathBox.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+        samplePathBox.TextChanged += (_, _) => TryDeriveMapping(false);
+
+        localFilePathBox.ReadOnly = true;
+        localFilePathBox.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+
+        remotePrefixBox.ReadOnly = true;
         remotePrefixBox.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         localPrefixBox.ReadOnly = true;
         localPrefixBox.Anchor = AnchorStyles.Left | AnchorStyles.Right;
@@ -114,53 +122,19 @@ public sealed class SetupWizardForm : Form
         var browseButton = new Button { Text = "Browse...", AutoSize = true };
         browseButton.Click += (_, _) =>
         {
-            using var dialog = new FolderBrowserDialog
+            using var dialog = new OpenFileDialog
             {
-                Description = "Choose the local folder that matches the Immich remote prefix",
-                UseDescriptionForTitle = true
+                Title = "Choose the matching local file",
+                CheckFileExists = true,
+                Multiselect = false
             };
 
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
-                localPrefixBox.Text = dialog.SelectedPath;
+                localFilePathBox.Text = dialog.FileName;
+                TryDeriveMapping(false);
             }
         };
-
-        var layout = new TableLayoutPanel
-        {
-            Dock = DockStyle.Top,
-            AutoSize = true,
-            ColumnCount = 3,
-            RowCount = 2,
-            Padding = new Padding(0, 18, 0, 0)
-        };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 130));
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        layout.Controls.Add(new Label { Text = "Immich prefix", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 0);
-        layout.Controls.Add(remotePrefixBox, 1, 0);
-        layout.SetColumnSpan(remotePrefixBox, 2);
-        layout.Controls.Add(new Label { Text = "Local folder", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 1);
-        layout.Controls.Add(localPrefixBox, 1, 1);
-        layout.Controls.Add(browseButton, 2, 1);
-
-        content.Controls.Add(body);
-        content.Controls.Add(layout);
-        return CreatePage(content);
-    }
-
-    private Panel CreateValidationPage()
-    {
-        var content = CreateContentLayout("Validate Mapping");
-        var body = CreateBodyLabel("Optionally paste a full Immich asset path to verify it maps to the expected local file.");
-        samplePathBox.PlaceholderText = "/external/fotos/album/photo.jpg";
-        samplePathBox.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-        samplePathBox.TextChanged += (_, _) => ResetSampleValidation();
-
-        var testButton = new Button { Text = "Test Mapping", AutoSize = true };
-        testButton.Click += (_, _) => ValidateSamplePath();
 
         testRevealButton.Text = "Test Reveal";
         testRevealButton.AutoSize = true;
@@ -172,22 +146,32 @@ public sealed class SetupWizardForm : Form
             Dock = DockStyle.Top,
             AutoSize = true,
             ColumnCount = 3,
-            RowCount = 3,
+            RowCount = 6,
             Padding = new Padding(0, 18, 0, 0)
         };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 130));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        layout.Controls.Add(samplePathBox, 0, 0);
-        layout.Controls.Add(testButton, 1, 0);
-        layout.Controls.Add(testRevealButton, 2, 0);
+        layout.Controls.Add(new Label { Text = "Immich file path", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 0);
+        layout.Controls.Add(samplePathBox, 1, 0);
+        layout.SetColumnSpan(samplePathBox, 2);
+        layout.Controls.Add(new Label { Text = "Local file", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 1);
+        layout.Controls.Add(localFilePathBox, 1, 1);
+        layout.Controls.Add(browseButton, 2, 1);
+        layout.Controls.Add(new Label { Text = "Immich prefix", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 2);
+        layout.Controls.Add(remotePrefixBox, 1, 2);
+        layout.SetColumnSpan(remotePrefixBox, 2);
+        layout.Controls.Add(new Label { Text = "Local folder", AutoSize = true, Anchor = AnchorStyles.Left }, 0, 3);
+        layout.Controls.Add(localPrefixBox, 1, 3);
+        layout.SetColumnSpan(localPrefixBox, 2);
+        layout.Controls.Add(testRevealButton, 1, 4);
         validationLabel.AutoSize = true;
         validationLabel.MaximumSize = new Size(640, 0);
         validationLabel.Padding = new Padding(0, 10, 0, 0);
         layout.SetColumnSpan(validationLabel, 3);
-        layout.Controls.Add(validationLabel, 0, 1);
+        layout.Controls.Add(validationLabel, 0, 5);
 
         content.Controls.Add(body);
         content.Controls.Add(layout);
@@ -466,7 +450,7 @@ public sealed class SetupWizardForm : Form
             return;
         }
 
-        if (pageIndex == 3)
+        if (pageIndex == 2)
         {
             SaveConfigAndRegisterProtocol();
         }
@@ -482,48 +466,54 @@ public sealed class SetupWizardForm : Form
 
     private bool ValidateMappingFields()
     {
-        if (string.IsNullOrWhiteSpace(remotePrefixBox.Text) || !remotePrefixBox.Text.Trim().StartsWith('/'))
+        if (!TryDeriveMapping(true))
         {
-            MessageBox.Show(this, "Immich prefix must start with '/'.", "Immich Bridge", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return false;
         }
 
-        if (string.IsNullOrWhiteSpace(localPrefixBox.Text) || !Directory.Exists(localPrefixBox.Text))
+        if (!Directory.Exists(localPrefixBox.Text))
         {
-            MessageBox.Show(this, "Choose an existing local folder.", "Immich Bridge", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(this, "The derived local folder does not exist.", "Immich Bridge", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return false;
         }
 
         return true;
     }
 
-    private void ValidateSamplePath()
+    private bool TryDeriveMapping(bool showError)
     {
         try
         {
-            var samplePath = samplePathBox.Text.Trim();
-            if (string.IsNullOrWhiteSpace(samplePath))
+            ResetSampleValidation();
+            if (string.IsNullOrWhiteSpace(samplePathBox.Text) || string.IsNullOrWhiteSpace(localFilePathBox.Text))
             {
-                validationLabel.Text = "Paste a sample Immich path first.";
-                return;
+                validationLabel.Text = "Paste the Immich file path and choose the matching local file.";
+                return false;
             }
 
+            if (!File.Exists(localFilePathBox.Text))
+            {
+                validationLabel.ForeColor = Color.Firebrick;
+                validationLabel.Text = "Choose an existing local file.";
+                return false;
+            }
+
+            var mapping = PathMappingDeriver.Derive(samplePathBox.Text, localFilePathBox.Text);
+            remotePrefixBox.Text = mapping.RemotePrefix;
+            localPrefixBox.Text = mapping.LocalPrefix;
+
             var config = CreateConfigFromFields();
-            var localPath = new PathMapper(config).MapPath(samplePath);
-            if (File.Exists(localPath))
+            var mappedLocalPath = new PathMapper(config).MapPath(samplePathBox.Text);
+            if (!mappedLocalPath.Equals(Path.GetFullPath(localFilePathBox.Text), StringComparison.OrdinalIgnoreCase))
             {
-                validatedLocalSamplePath = localPath;
-                validationLabel.ForeColor = Color.ForestGreen;
-                validationLabel.Text = $"✓ Mapping verified: {localPath}";
-                testRevealButton.Enabled = true;
+                throw new InvalidOperationException($"Derived mapping points to a different file: {mappedLocalPath}");
             }
-            else
-            {
-                validatedLocalSamplePath = null;
-                validationLabel.ForeColor = Color.DarkOrange;
-                validationLabel.Text = $"Mapped path does not exist yet: {localPath}";
-                testRevealButton.Enabled = false;
-            }
+
+            validatedLocalSamplePath = mappedLocalPath;
+            validationLabel.ForeColor = Color.ForestGreen;
+            validationLabel.Text = $"✓ Mapping verified using shared path: {mapping.SharedRelativePath}";
+            testRevealButton.Enabled = true;
+            return true;
         }
         catch (Exception ex)
         {
@@ -531,6 +521,12 @@ public sealed class SetupWizardForm : Form
             validationLabel.ForeColor = Color.Firebrick;
             validationLabel.Text = ex.Message;
             testRevealButton.Enabled = false;
+            if (showError)
+            {
+                MessageBox.Show(this, ex.Message, "Immich Bridge", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+
+            return false;
         }
     }
 
