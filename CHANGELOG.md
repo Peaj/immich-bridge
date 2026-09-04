@@ -2,7 +2,7 @@
 
 All notable changes to Immich Bridge are tracked here.
 
-## Unreleased
+## 0.4.1
 
 - Fixed browser extension updates and restarts repeatedly opening the setup page.
 - Added opt-in GitHub Actions publishing for Firefox Add-ons, the Chrome Web Store, and Microsoft Edge Add-ons.
