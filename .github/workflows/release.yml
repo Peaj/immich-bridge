@@ -149,6 +149,17 @@ jobs:
           New-Item -ItemType Directory -Force .\artifacts | Out-Null
           $releaseNotes | Set-Content .\artifacts\RELEASE_NOTES.md
 
+      - name: Upload browser store packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-store-packages-${{ github.ref_name }}
+          path: |
+            artifacts/immich-bridge-firefox-${{ github.ref_name }}.zip
+            artifacts/immich-bridge-chromium-${{ github.ref_name }}.zip
+            artifacts/immich-bridge-edge-${{ github.ref_name }}.zip
+            artifacts/RELEASE_NOTES.md
+          retention-days: 7
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -160,3 +171,93 @@ jobs:
             artifacts/immich-bridge-chromium-${{ github.ref_name }}.zip
             artifacts/immich-bridge-edge-${{ github.ref_name }}.zip
             artifacts/SHA256SUMS.txt
+
+  publish-firefox:
+    name: Submit Firefox extension
+    needs: release
+    if: ${{ needs.release.result == 'success' && vars.PUBLISH_FIREFOX_EXTENSION == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Submit to Mozilla Add-ons
+        env:
+          WEB_EXT_API_KEY: ${{ secrets.AMO_JWT_ISSUER }}
+          WEB_EXT_API_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+          WEB_EXT_CHANNEL: listed
+          WEB_EXT_APPROVAL_TIMEOUT: 0
+        run: >
+          npx --yes web-ext sign
+          --source-dir browser-extension
+          --artifacts-dir artifacts/firefox-signed
+          --amo-metadata browser-extension/amo-metadata.json
+
+  publish-chrome:
+    name: Submit Chrome extension
+    needs: release
+    if: ${{ needs.release.result == 'success' && vars.PUBLISH_CHROME_EXTENSION == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Download browser store packages
+        uses: actions/download-artifact@v4
+        with:
+          name: browser-store-packages-${{ github.ref_name }}
+          path: artifacts/store-packages
+
+      - name: Submit to Chrome Web Store
+        env:
+          CHROME_SERVICE_ACCOUNT_JSON: ${{ secrets.CHROME_SERVICE_ACCOUNT_JSON }}
+          CHROME_PUBLISHER_ID: ${{ vars.CHROME_PUBLISHER_ID }}
+          CHROME_EXTENSION_ID: ${{ vars.CHROME_EXTENSION_ID }}
+        run: node scripts/publish-chrome-extension.js "artifacts/store-packages/immich-bridge-chromium-${{ github.ref_name }}.zip"
+
+  publish-edge:
+    name: Submit Edge extension
+    needs: release
+    if: ${{ needs.release.result == 'success' && vars.PUBLISH_EDGE_EXTENSION == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Download browser store packages
+        uses: actions/download-artifact@v4
+        with:
+          name: browser-store-packages-${{ github.ref_name }}
+          path: artifacts/store-packages
+
+      - name: Submit to Microsoft Edge Add-ons
+        env:
+          EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
+          EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
+          EDGE_PRODUCT_ID: ${{ vars.EDGE_PRODUCT_ID }}
+          EDGE_CERTIFICATION_NOTES: Automated update for ${{ github.ref_name }}. Source and release notes are available at https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}.
+        run: node scripts/publish-edge-extension.js "artifacts/store-packages/immich-bridge-edge-${{ github.ref_name }}.zip"
