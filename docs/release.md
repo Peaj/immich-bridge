@@ -54,8 +54,8 @@ The workflow uses `web-ext sign --channel listed` with `browser-extension/amo-me
 1. Enable the Chrome Web Store API in a Google Cloud project and create a service account with a JSON key.
 2. In the Chrome Web Store Developer Dashboard, add the service account email under **Account** so it can manage this publisher's items.
 3. Add the complete JSON key as repository secret `CHROME_SERVICE_ACCOUNT_JSON`.
-4. Add repository variable `CHROME_PUBLISHER_ID` using the value shown under **Publisher > Settings**.
-5. Add repository variable `CHROME_EXTENSION_ID` with value `ohghjemcjnaickehejdokfmjphpjoiag`.
+4. Add repository secret `CHROME_PUBLISHER_ID` using the value shown under **Publisher > Settings**.
+5. Add repository secret `CHROME_EXTENSION_ID` with value `ohghjemcjnaickehejdokfmjphpjoiag`.
 6. Add repository variable `PUBLISH_CHROME_EXTENSION` with value `true`.
 
 The workflow uses the Chrome Web Store API V2 to upload the package and submit it with `DEFAULT_PUBLISH`, which makes the update public after it passes review. See Google's [service account setup](https://developer.chrome.com/docs/webstore/service-accounts) and [Web Store API guide](https://developer.chrome.com/docs/webstore/using-api).
@@ -64,12 +64,16 @@ The workflow uses the Chrome Web Store API V2 to upload the package and submit i
 
 1. In Partner Center, open **Microsoft Edge > Publish API**, enable the current API experience, and create API credentials.
 2. Add repository secrets `EDGE_CLIENT_ID` and `EDGE_API_KEY`.
-3. Add repository variable `EDGE_PRODUCT_ID` using the product GUID from the extension overview. This is not the public 32-character Edge extension ID.
+3. Add repository secret `EDGE_PRODUCT_ID` using the product GUID from the extension overview. This is not the public 32-character Edge extension ID.
 4. Add repository variable `PUBLISH_EDGE_EXTENSION` with value `true`.
 
 The workflow uploads and submits the package through the Microsoft Edge Add-ons Update REST API. API keys expire, so renew the key and update `EDGE_API_KEY` before its expiry date. See Microsoft's [Edge Add-ons API setup](https://learn.microsoft.com/en-us/microsoft-edge/extensions/update/api/using-addons-api).
 
 All three jobs submit package updates to existing listings. Keep store listing text, screenshots, privacy declarations, and other dashboard metadata current manually; the Chrome and Edge package APIs do not update those fields.
+
+### Retry a Store Submission
+
+If a store submission fails after the GitHub release was created, run the **Publish Browser Stores** workflow manually, enter the existing release tag, and select only the stores that need another attempt. Do not resubmit a store whose version was already accepted.
 
 ## Installer Direction
 
