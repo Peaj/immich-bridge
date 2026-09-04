@@ -3,6 +3,7 @@
 
   const contentScriptId = 'immich-bridge-content';
   const storageKey = 'immichOrigin';
+  const onboardingShownKey = 'onboardingShown';
   const extensionApi = globalThis.browser || globalThis.chrome;
   const isFirefox = Boolean(globalThis.browser);
 
@@ -55,9 +56,27 @@
     await registerContentScript(await getStoredOrigin());
   }
 
-  extensionApi.runtime.onInstalled.addListener(() => {
-    configureFromStorage();
-    extensionApi.runtime.openOptionsPage();
+  async function handleInstalled(details) {
+    await configureFromStorage();
+
+    if (!details || details.reason !== 'install') {
+      return;
+    }
+
+    const values = await extensionApi.storage.local.get(onboardingShownKey);
+    if (values[onboardingShownKey]) {
+      return;
+    }
+
+    // Persist first so duplicate lifecycle events cannot open multiple tabs.
+    await extensionApi.storage.local.set({ [onboardingShownKey]: true });
+    await extensionApi.runtime.openOptionsPage();
+  }
+
+  extensionApi.runtime.onInstalled.addListener(details => {
+    return handleInstalled(details).catch(error => {
+      console.error('[Immich Bridge] Unable to handle extension installation.', error);
+    });
   });
 
   extensionApi.runtime.onStartup.addListener(configureFromStorage);

@@ -2,6 +2,10 @@
 
 All notable changes to Immich Bridge are tracked here.
 
+## Unreleased
+
+- Fixed browser extension updates and restarts repeatedly opening the setup page.
+
 ## 0.4.0
 
 - Simplified first-run setup by deriving path mappings from a full Immich file path and the matching local file.
