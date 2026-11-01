@@ -103,6 +103,57 @@ public sealed class BridgeApplicationTests
         Assert.Equal(Path.GetFullPath(@"Z:\Photos\img.jpg"), launcher.SystemOpenWithPath);
     }
 
+    [Fact]
+    public void Run_CopyMapsPathAndCopiesFileToClipboard()
+    {
+        var configPath = WriteConfig(new BridgeConfig
+        {
+            Mappings =
+            [
+                new PathMapping { RemotePrefix = "/mnt/photos", LocalPrefix = @"Z:\Photos" }
+            ],
+            Options = new BridgeOptions { VerifyLocalFileExists = false }
+        });
+        var launcher = new RecordingLauncher();
+
+        var app = new BridgeApplication(
+            launcher,
+            new RecordingRegistrar(),
+            new ConfigLoader(configPath),
+            TextWriter.Null);
+
+        var exitCode = app.Run(["immich-bridge://copy?path=%2Fmnt%2Fphotos%2Fimg.jpg"]);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal(Path.GetFullPath(@"Z:\Photos\img.jpg"), launcher.CopiedPath);
+        Assert.Null(launcher.SystemOpenWithPath);
+    }
+
+    [Fact]
+    public void Run_CopyCommandMapsPathAndCopiesFileToClipboard()
+    {
+        var configPath = WriteConfig(new BridgeConfig
+        {
+            Mappings =
+            [
+                new PathMapping { RemotePrefix = "/mnt/photos", LocalPrefix = @"Z:\Photos" }
+            ],
+            Options = new BridgeOptions { VerifyLocalFileExists = false }
+        });
+        var launcher = new RecordingLauncher();
+
+        var app = new BridgeApplication(
+            launcher,
+            new RecordingRegistrar(),
+            new ConfigLoader(configPath),
+            TextWriter.Null);
+
+        var exitCode = app.Run(["--copy", "/mnt/photos/img.jpg"]);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal(Path.GetFullPath(@"Z:\Photos\img.jpg"), launcher.CopiedPath);
+    }
+
     private static string WriteConfig(BridgeConfig config)
     {
         var path = Path.Combine(Path.GetTempPath(), "ImmichBridge.Tests", Guid.NewGuid().ToString("N"), "config.json");
@@ -117,6 +168,8 @@ public sealed class BridgeApplicationTests
 
         public string? SystemOpenWithPath { get; private set; }
 
+        public string? CopiedPath { get; private set; }
+
         public void RevealFile(string localPath)
         {
             RevealedPath = localPath;
@@ -129,6 +182,11 @@ public sealed class BridgeApplicationTests
 
         public void OpenWithApp(string executablePath, string arguments, string localPath)
         {
+        }
+
+        public void CopyToClipboard(string localPath)
+        {
+            CopiedPath = localPath;
         }
     }
 
