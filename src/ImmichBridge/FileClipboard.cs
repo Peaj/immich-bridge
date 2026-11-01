@@ -29,7 +29,9 @@ public static class FileClipboard
         using var image = TryLoadImage(localPath);
         if (image is not null)
         {
-            data.SetImage(image);
+            // Only the native bitmap format: SetImage would also add a serialized .NET-only
+            // copy that no paste target reads and that takes seconds to encode for large photos.
+            data.SetData(DataFormats.Bitmap, autoConvert: false, image);
         }
 
         // copy: true flushes every format to the clipboard so it survives this process exiting.
