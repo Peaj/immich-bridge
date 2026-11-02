@@ -2,9 +2,12 @@
 
 All notable changes to Immich Bridge are tracked here.
 
-## Unreleased
+## 0.5.0
+
+The browser add-ons' new `Copy original` action needs Immich Bridge 0.5.0 or newer. Update the companion app before using it.
 
 - Added a `Copy original` action that puts the original local file on the clipboard, with full-resolution image pixels for pasting into image editors.
+- When the browser asks for an action the installed companion app doesn't know yet, it now explains that a newer version is needed and offers to open the download page.
 - Setup now installs Immich Bridge to `%LOCALAPPDATA%\Programs\ImmichBridge`, so the browser link no longer breaks when the downloaded file is moved, deleted, or run from inside the ZIP.
 - Running a newer downloaded copy offers to update the installed one; `--install` and `--uninstall` do the same from the command line.
 - Added a Start menu entry for rerunning setup and a Settings > Apps entry for uninstalling.

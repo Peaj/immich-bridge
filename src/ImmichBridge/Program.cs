@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Windows.Forms;
 
 namespace ImmichBridge;
@@ -25,6 +26,12 @@ public static class Program
 
             return app.Run(args);
         }
+        catch (UnsupportedActionException ex) when (LooksLikeProtocolLaunch(args))
+        {
+            logger.Error(ex);
+            OfferUpdate(ex);
+            return 1;
+        }
         catch (Exception ex)
         {
             logger.Error(ex);
@@ -39,6 +46,24 @@ public static class Program
             }
 
             return 1;
+        }
+    }
+
+    private static void OfferUpdate(UnsupportedActionException exception)
+    {
+        var answer = MessageBox.Show(
+            $"{exception.Message}\n\nOpen the download page for the latest version?",
+            "Immich Bridge",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Information);
+
+        if (answer == DialogResult.Yes)
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = UnsupportedActionException.DownloadUrl,
+                UseShellExecute = true
+            });
         }
     }
 
