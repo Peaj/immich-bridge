@@ -129,6 +129,20 @@ public sealed class BridgeApplication
             return 0;
         }
 
+        if (StringComparer.OrdinalIgnoreCase.Equals(command, "--copy"))
+        {
+            if (args.Length < 2 || string.IsNullOrWhiteSpace(args[1]))
+            {
+                throw new ArgumentException("--copy requires a remote path argument.");
+            }
+
+            var localPath = MapAndValidateLocalPath(args[1]);
+            output.WriteLine($"Copying original file to the clipboard: {localPath}");
+            logger.Info($"CLI copy requested for '{args[1]}' -> '{localPath}'.");
+            launcher.CopyToClipboard(localPath);
+            return 0;
+        }
+
         var request = ProtocolRequestParser.Parse(command);
         ExecuteRequest(request);
         return 0;
@@ -144,6 +158,13 @@ public sealed class BridgeApplication
         {
             launcher.RevealFile(localPath);
             logger.Info($"Explorer reveal launched for '{localPath}'.");
+            return;
+        }
+
+        if (request.Action == BridgeAction.Copy)
+        {
+            launcher.CopyToClipboard(localPath);
+            logger.Info($"Original file copied to the clipboard: '{localPath}'.");
             return;
         }
 
@@ -297,7 +318,9 @@ public sealed class BridgeApplication
         output.WriteLine("  ImmichBridge.exe --check");
         output.WriteLine("  ImmichBridge.exe --map-path <remotePath>");
         output.WriteLine("  ImmichBridge.exe --open-with <remotePath>");
+        output.WriteLine("  ImmichBridge.exe --copy <remotePath>");
         output.WriteLine("  ImmichBridge.exe \"immich-bridge://reveal?path=<remotePath>\"");
+        output.WriteLine("  ImmichBridge.exe \"immich-bridge://copy?path=<remotePath>\"");
         output.WriteLine("  ImmichBridge.exe \"immich-bridge://open?path=<remotePath>\"");
         output.WriteLine("  ImmichBridge.exe \"immich-bridge://open?app=<appId>&path=<remotePath>\"");
     }

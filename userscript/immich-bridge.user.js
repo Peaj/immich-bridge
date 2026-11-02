@@ -16,6 +16,7 @@
   const assetApiPrefix = '/api/assets/';
   const actions = [
     { label: 'Reveal in Explorer', action: 'reveal', icon: 'folder' },
+    { label: 'Copy original', action: 'copy', icon: 'copy' },
     { label: 'Open with...', action: 'open', icon: 'app' }
   ];
   let lastAssetId = null;
@@ -80,6 +81,12 @@
     window.alert(`Immich Bridge: ${error.message || error}`);
   }
 
+  const iconPaths = {
+    folder: 'M10,4L12,6H20A2,2 0 0,1 22,8V18A2,2 0 0,1 20,20H4A2,2 0 0,1 2,18V6A2,2 0 0,1 4,4H10M4,8V18H20V8H4Z',
+    copy: 'M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z',
+    app: 'M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3H14M19,19H5V5H12V3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z'
+  };
+
   function createSvgIcon(kind, size) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('width', String(size));
@@ -92,9 +99,7 @@
 
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     path.setAttribute('fill', 'currentColor');
-    path.setAttribute('d', kind === 'folder'
-      ? 'M10,4L12,6H20A2,2 0 0,1 22,8V18A2,2 0 0,1 20,20H4A2,2 0 0,1 2,18V6A2,2 0 0,1 4,4H10M4,8V18H20V8H4Z'
-      : 'M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3H14M19,19H5V5H12V3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z');
+    path.setAttribute('d', iconPaths[kind] || iconPaths.app);
     svg.appendChild(path);
     return svg;
   }

@@ -32,6 +32,16 @@ public sealed class ProtocolRequestParserTests
     }
 
     [Fact]
+    public void Parse_CopyReadsPath()
+    {
+        var request = ProtocolRequestParser.Parse("immich-bridge://copy?path=%2Fmnt%2Fphotos%2Fimg.jpg");
+
+        Assert.Equal(BridgeAction.Copy, request.Action);
+        Assert.Null(request.AppId);
+        Assert.Equal("/mnt/photos/img.jpg", request.RemotePath);
+    }
+
+    [Fact]
     public void Parse_RejectsUnknownAction()
     {
         var exception = Assert.Throws<InvalidOperationException>(
