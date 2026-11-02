@@ -45,6 +45,12 @@ public sealed class WindowsLauncher : IPlatformLauncher
         });
     }
 
+    public void CopyToClipboard(string localPath)
+    {
+        FileClipboard.Copy(localPath);
+        System.Windows.Forms.Application.Run(new CopyNoticeForm(localPath));
+    }
+
     private const int HResultCancelled = unchecked((int)0x800704C7);
 
     [DllImport("shell32.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]

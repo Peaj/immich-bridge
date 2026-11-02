@@ -7,4 +7,6 @@ public interface IPlatformLauncher
     void OpenWithSystemDialog(string localPath);
 
     void OpenWithApp(string executablePath, string arguments, string localPath);
+
+    void CopyToClipboard(string localPath);
 }

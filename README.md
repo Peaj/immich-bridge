@@ -15,6 +15,7 @@ It consists of a browser add-on and a small Windows companion app. The add-on ad
 
 - Reveal the local file in Windows Explorer.
 - Open the local file with Windows' native Open With dialog.
+- Copy the original file to the clipboard, ready to paste into Explorer, email, messengers, or image editors.
 
 Immich Bridge is useful when Immich stores assets from folders that are also available on your Windows workstation, for example through a mapped drive, SMB share, external disk, or synced folder.
 

@@ -3,7 +3,8 @@ namespace ImmichBridge;
 public enum BridgeAction
 {
     Reveal,
-    Open
+    Open,
+    Copy
 }
 
 public sealed record ProtocolRequest(BridgeAction Action, string RemotePath, string? AppId);
@@ -36,6 +37,7 @@ public static class ProtocolRequestParser
         {
             "reveal" => new ProtocolRequest(BridgeAction.Reveal, remotePath, null),
             "open" => new ProtocolRequest(BridgeAction.Open, remotePath, GetOptionalAppId(query)),
+            "copy" => new ProtocolRequest(BridgeAction.Copy, remotePath, null),
             _ => throw new InvalidOperationException($"Unknown Immich Bridge action '{actionName}'.")
         };
     }

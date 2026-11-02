@@ -34,7 +34,7 @@ The internal config file is stored at `%AppData%\ImmichBridge\config.json`:
 }
 ```
 
-The browser add-ons currently expose `Reveal in Explorer` and `Open with...`. Direct app ids are supported by the companion app protocol but are not exposed from the Immich browser UI at the moment.
+The browser add-ons currently expose `Reveal in Explorer`, `Copy original`, and `Open with...`. Direct app ids are supported by the companion app protocol but are not exposed from the Immich browser UI at the moment.
 
 Prefer mappings that point to external libraries or other user-managed media folders. Avoid mapping Immich's internal upload/library storage unless you treat the mapped files as read-only from desktop apps.
 
@@ -72,6 +72,14 @@ dotnet run --project .\src\ImmichBridge -- --open-with "/mnt/immich-external/pho
 
 This uses Windows' `SHOpenWithDialog` shell API. If the file type already has a default app, Windows may show a compact chooser or launch the selected app after confirmation depending on your system settings.
 
+Test copying the original file to the clipboard:
+
+```powershell
+dotnet run --project .\src\ImmichBridge -- --copy "/mnt/immich-external/photos/2024/img.jpg"
+```
+
+The clipboard receives the file itself, the same as Explorer's Copy, so pasting into Explorer, mail attachments, or messengers uses the untouched original. Images that Windows GDI+ can decode (JPEG, PNG, GIF, BMP, TIFF) are also added as full-resolution pixels with EXIF orientation applied, so image editors paste them as a picture. PNG files additionally provide their original bytes in the `PNG` clipboard format to keep transparency. Other formats, such as videos, RAW, or HEIC, are copied as files only.
+
 When testing protocol launches, inspect the helper log:
 
 ```powershell
@@ -83,6 +91,7 @@ Manual protocol tests:
 ```text
 immich-bridge://reveal?path=%2Fmnt%2Fimmich-external%2Fphotos%2F2024%2Fimg.jpg
 immich-bridge://open?path=%2Fmnt%2Fimmich-external%2Fphotos%2F2024%2Fimg.jpg
+immich-bridge://copy?path=%2Fmnt%2Fimmich-external%2Fphotos%2F2024%2Fimg.jpg
 ```
 
 ## Browser Integration

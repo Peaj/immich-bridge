@@ -2,6 +2,10 @@
 
 All notable changes to Immich Bridge are tracked here.
 
+## Unreleased
+
+- Added a `Copy original` action that puts the original local file on the clipboard, with full-resolution image pixels for pasting into image editors.
+
 ## 0.4.1
 
 - Fixed browser extension updates and restarts repeatedly opening the setup page.
