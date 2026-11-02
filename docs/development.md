@@ -110,6 +110,17 @@ npm run lint:extension
 npm run build:extensions
 ```
 
+### Test builds from CI
+
+Every CI run, for pull requests and for `main`, uploads test builds that are kept for 14 days. Download them from the **Artifacts** section of the run's summary page in GitHub Actions:
+
+- `ImmichBridge-win-x64-buildN`: the single-file `ImmichBridge.exe`, built the same way as a release.
+- `immich-bridge-extensions-buildN`:
+  - `immich-bridge-firefox.zip`: load it in `about:debugging` > **This Firefox** > **Load Temporary Add-on**.
+  - `chromium` and `edge`: load these folders unpacked from `chrome://extensions` or `edge://extensions` with developer mode enabled.
+
+Test builds carry the version from the project files, so a build made after a release reports the same version as that release.
+
 ## Releases
 
 Immich Bridge uses semantic versioning and GitHub Releases. Release tags use `vX.Y.Z`; the release workflow verifies that the tag, app version, userscript version, Firefox extension version, and Chromium-family extension version match. See [release.md](release.md) for the release process.

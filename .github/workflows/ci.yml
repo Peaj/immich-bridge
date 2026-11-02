@@ -41,3 +41,40 @@ jobs:
 
       - name: Lint browser extensions
         run: npm run lint:extension
+
+      # Test builds, so a PR can be tried without tagging a release.
+      - name: Publish win-x64 test build
+        run: >
+          dotnet publish .\src\ImmichBridge\ImmichBridge.csproj
+          --configuration Release
+          --runtime win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:DebugType=embedded
+          --output .\artifacts\ImmichBridge-win-x64
+
+      - name: Build browser extension test packages
+        shell: pwsh
+        run: |
+          npm run build:firefox-extension
+          npm run prepare:chromium-extension
+          npm run prepare:edge-extension
+          New-Item -ItemType Directory -Force .\artifacts\test-extensions | Out-Null
+          Copy-Item (Get-ChildItem .\artifacts\browser-extension -Filter *.zip | Select-Object -First 1).FullName .\artifacts\test-extensions\immich-bridge-firefox.zip
+          Copy-Item .\artifacts\chromium-extension\source .\artifacts\test-extensions\chromium -Recurse
+          Copy-Item .\artifacts\edge-extension\source .\artifacts\test-extensions\edge -Recurse
+
+      - name: Upload companion app test build
+        uses: actions/upload-artifact@v4
+        with:
+          name: ImmichBridge-win-x64-build${{ github.run_number }}
+          path: artifacts/ImmichBridge-win-x64/ImmichBridge.exe
+          retention-days: 14
+
+      - name: Upload browser extension test builds
+        uses: actions/upload-artifact@v4
+        with:
+          name: immich-bridge-extensions-build${{ github.run_number }}
+          path: artifacts/test-extensions
+          retention-days: 14
