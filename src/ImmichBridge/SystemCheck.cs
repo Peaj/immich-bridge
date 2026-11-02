@@ -4,13 +4,13 @@ public sealed class SystemCheck
 {
     private readonly ConfigLoader configLoader;
     private readonly IProtocolRegistrar registrar;
-    private readonly string executablePath;
+    private readonly AppInstaller installer;
 
-    public SystemCheck(ConfigLoader configLoader, IProtocolRegistrar registrar, string executablePath)
+    public SystemCheck(ConfigLoader configLoader, IProtocolRegistrar registrar, AppInstaller installer)
     {
         this.configLoader = configLoader;
         this.registrar = registrar;
-        this.executablePath = executablePath;
+        this.installer = installer;
     }
 
     public IReadOnlyList<CheckResult> Run()
@@ -49,9 +49,11 @@ public sealed class SystemCheck
 
     private IReadOnlyList<CheckResult> AppendProtocolAndLogChecks(List<CheckResult> results, BridgeConfig? config)
     {
-        results.Add(registrar.IsRegistered(executablePath)
-            ? CheckResult.Pass("Protocol", "immich-bridge:// is registered for this executable.")
-            : CheckResult.Fail("Protocol", "immich-bridge:// is not registered for this executable. Run --register-protocol or --setup."));
+        results.Add(installer.IsInstalled
+            ? CheckResult.Pass("Install", $"Installed at {installer.ExecutablePath}")
+            : CheckResult.Fail("Install", $"Not installed at {installer.ExecutablePath}. Run --install or --setup."));
+
+        results.Add(CheckProtocol());
 
         var logPath = BridgePaths.ResolveLogFile(config?.Options ?? new BridgeOptions());
         var logDirectory = Path.GetDirectoryName(logPath);
@@ -60,6 +62,24 @@ public sealed class SystemCheck
             : CheckResult.Pass("Log path", logPath));
 
         return results;
+    }
+
+    private CheckResult CheckProtocol()
+    {
+        var registeredPath = registrar.GetRegisteredExecutablePath();
+        if (registeredPath is null)
+        {
+            return CheckResult.Fail("Protocol", "immich-bridge:// is not registered. Run --install or --setup.");
+        }
+
+        if (!File.Exists(registeredPath))
+        {
+            return CheckResult.Fail("Protocol", $"immich-bridge:// points to a missing file: {registeredPath}. Run --install or --setup.");
+        }
+
+        return installer.IsInstalledPath(registeredPath)
+            ? CheckResult.Pass("Protocol", $"immich-bridge:// is registered for {registeredPath}")
+            : CheckResult.Fail("Protocol", $"immich-bridge:// points to {registeredPath} instead of the installed copy, so it breaks if that file is moved or deleted. Run --install.");
     }
 }
 

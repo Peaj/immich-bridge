@@ -9,6 +9,8 @@ public interface IProtocolRegistrar
     void Unregister();
 
     bool IsRegistered(string executablePath);
+
+    string? GetRegisteredExecutablePath();
 }
 
 public sealed class WindowsProtocolRegistrar : IProtocolRegistrar
@@ -36,9 +38,31 @@ public sealed class WindowsProtocolRegistrar : IProtocolRegistrar
 
     public bool IsRegistered(string executablePath)
     {
+        return string.Equals(ReadCommand(), BuildCommand(executablePath), StringComparison.OrdinalIgnoreCase);
+    }
+
+    public string? GetRegisteredExecutablePath()
+    {
+        var command = ReadCommand();
+        return command is null ? null : ParseExecutablePath(command);
+    }
+
+    public static string? ParseExecutablePath(string command)
+    {
+        var trimmed = command.Trim();
+        if (!trimmed.StartsWith('"'))
+        {
+            return null;
+        }
+
+        var closingQuote = trimmed.IndexOf('"', 1);
+        return closingQuote > 1 ? trimmed[1..closingQuote] : null;
+    }
+
+    private static string? ReadCommand()
+    {
         using var commandKey = Registry.CurrentUser.OpenSubKey($@"{RegistryPath}\shell\open\command", false);
-        var command = commandKey?.GetValue(null) as string;
-        return string.Equals(command, BuildCommand(executablePath), StringComparison.OrdinalIgnoreCase);
+        return commandKey?.GetValue(null) as string;
     }
 
     public static string BuildCommand(string executablePath)

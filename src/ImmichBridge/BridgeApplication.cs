@@ -11,13 +11,19 @@ public sealed class BridgeApplication
     private readonly ConfigService configService;
     private readonly TextWriter output;
     private readonly FileLogger logger;
+    private readonly AppInstaller installer;
+    private readonly IInstallRegistration installRegistration;
+    private readonly string executablePath;
 
     public BridgeApplication(
         IPlatformLauncher launcher,
         IProtocolRegistrar registrar,
         ConfigLoader configLoader,
         TextWriter output,
-        FileLogger? logger = null)
+        FileLogger? logger = null,
+        AppInstaller? installer = null,
+        IInstallRegistration? installRegistration = null,
+        string? executablePath = null)
     {
         this.launcher = launcher;
         this.registrar = registrar;
@@ -25,6 +31,9 @@ public sealed class BridgeApplication
         configService = new ConfigService(configLoader.ConfigPath);
         this.output = output;
         this.logger = logger ?? new FileLogger();
+        this.installer = installer ?? new AppInstaller();
+        this.installRegistration = installRegistration ?? new WindowsInstallRegistration();
+        this.executablePath = executablePath ?? GetExecutablePath();
     }
 
     public int Run(string[] args)
@@ -34,6 +43,13 @@ public sealed class BridgeApplication
             if (configService.NeedsSetup())
             {
                 ShowSetupWizard();
+                return 0;
+            }
+
+            if (!installer.IsInstalledPath(executablePath))
+            {
+                // A configured user launching a downloaded copy is installing or updating.
+                OfferInstall();
                 return 0;
             }
 
@@ -59,9 +75,22 @@ public sealed class BridgeApplication
             return RunCheck();
         }
 
+        if (StringComparer.OrdinalIgnoreCase.Equals(command, "--install"))
+        {
+            var installedPath = Install();
+            output.WriteLine($"Installed Immich Bridge to {installedPath} and registered the immich-bridge:// protocol.");
+            return 0;
+        }
+
+        if (StringComparer.OrdinalIgnoreCase.Equals(command, "--uninstall"))
+        {
+            Uninstall();
+            return 0;
+        }
+
         if (StringComparer.OrdinalIgnoreCase.Equals(command, "--register-protocol"))
         {
-            registrar.Register(GetExecutablePath());
+            registrar.Register(executablePath);
             output.WriteLine("Registered immich-bridge:// protocol for Immich Bridge.");
             return 0;
         }
@@ -158,6 +187,80 @@ public sealed class BridgeApplication
         return localPath;
     }
 
+    private string Install()
+    {
+        var installedPath = installer.Install(executablePath);
+        registrar.Register(installedPath);
+        installRegistration.Register(installedPath, AppInstaller.GetFileVersion(installedPath)!);
+        logger.Info($"Installed '{executablePath}' to '{installedPath}'.");
+        return installedPath;
+    }
+
+    private void OfferInstall()
+    {
+        var runningVersion = AppInstaller.GetFileVersion(executablePath)!;
+        var installedVersion = AppInstaller.GetFileVersion(installer.ExecutablePath);
+        var kind = AppInstaller.Classify(runningVersion, installedVersion);
+        var message = kind switch
+        {
+            InstallKind.Fresh => $"Install Immich Bridge {runningVersion.ToString(3)} to {installer.InstallDirectory}?\n\nThe browser link will use the installed copy, so this file can be deleted afterwards.",
+            InstallKind.Upgrade => $"Update Immich Bridge from {installedVersion!.ToString(3)} to {runningVersion.ToString(3)}?",
+            InstallKind.Downgrade => $"A newer Immich Bridge ({installedVersion!.ToString(3)}) is already installed. Replace it with this older version ({runningVersion.ToString(3)})?",
+            _ => $"Immich Bridge {runningVersion.ToString(3)} is already installed. Reinstall it from this file?"
+        };
+
+        var result = MessageBox.Show(
+            message,
+            "Immich Bridge",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question,
+            kind == InstallKind.Downgrade ? MessageBoxDefaultButton.Button2 : MessageBoxDefaultButton.Button1);
+        if (result != DialogResult.Yes)
+        {
+            return;
+        }
+
+        var installedPath = Install();
+        MessageBox.Show(
+            $"Immich Bridge {runningVersion.ToString(3)} is installed at:\n{installedPath}\n\nYou can delete the file you downloaded.",
+            "Immich Bridge",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information);
+    }
+
+    private void Uninstall()
+    {
+        var confirm = MessageBox.Show(
+            "Uninstall Immich Bridge?\n\nThis removes the app, its browser link, and its Start menu entry.",
+            "Immich Bridge",
+            MessageBoxButtons.OKCancel,
+            MessageBoxIcon.Question);
+        if (confirm != DialogResult.OK)
+        {
+            return;
+        }
+
+        var removeSettings = MessageBox.Show(
+            $"Also delete your settings and logs?\n\n{BridgePaths.AppDataDirectory}",
+            "Immich Bridge",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question,
+            MessageBoxDefaultButton.Button2) == DialogResult.Yes;
+
+        registrar.Unregister();
+        installRegistration.Unregister();
+        installer.Uninstall(executablePath);
+        logger.Info("Immich Bridge uninstalled.");
+
+        if (removeSettings && Directory.Exists(BridgePaths.AppDataDirectory))
+        {
+            Directory.Delete(BridgePaths.AppDataDirectory, recursive: true);
+        }
+
+        output.WriteLine("Immich Bridge was uninstalled.");
+        MessageBox.Show("Immich Bridge was uninstalled.", "Immich Bridge", MessageBoxButtons.OK, MessageBoxIcon.Information);
+    }
+
     private static bool ConfirmOpen(string appId, string localPath)
     {
         var result = MessageBox.Show(
@@ -186,6 +289,8 @@ public sealed class BridgeApplication
         output.WriteLine("Immich Bridge");
         output.WriteLine();
         output.WriteLine("Usage:");
+        output.WriteLine("  ImmichBridge.exe --install");
+        output.WriteLine("  ImmichBridge.exe --uninstall");
         output.WriteLine("  ImmichBridge.exe --register-protocol");
         output.WriteLine("  ImmichBridge.exe --unregister-protocol");
         output.WriteLine("  ImmichBridge.exe --setup");
@@ -199,13 +304,13 @@ public sealed class BridgeApplication
 
     private void ShowSetupWizard()
     {
-        using var form = new SetupWizardForm(configService, registrar, launcher, GetExecutablePath());
+        using var form = new SetupWizardForm(configService, launcher, executablePath, installer.InstallDirectory, Install);
         form.ShowDialog();
     }
 
     private int RunCheck()
     {
-        var check = new SystemCheck(configLoader, registrar, GetExecutablePath());
+        var check = new SystemCheck(configLoader, registrar, installer);
         var results = check.Run();
         foreach (var result in results)
         {

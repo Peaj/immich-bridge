@@ -28,6 +28,7 @@ git push origin v0.4.0
 
 The release workflow publishes:
 
+- `ImmichBridge-win-x64-vX.Y.Z.exe`
 - `ImmichBridge-win-x64-vX.Y.Z.zip`
 - `immich-bridge-vX.Y.Z.user.js`
 - `immich-bridge-firefox-vX.Y.Z.zip`

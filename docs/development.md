@@ -40,11 +40,25 @@ Prefer mappings that point to external libraries or other user-managed media fol
 
 ## Companion App Commands
 
-Register the protocol handler:
+Install the running build to `%LOCALAPPDATA%\Programs\ImmichBridge`, register the protocol handler for the installed copy, and add the Start menu shortcut and Settings > Apps entry:
+
+```powershell
+.\ImmichBridge.exe --install
+```
+
+Setup does the same when you finish it, and launching a downloaded copy without arguments offers to install or update. Remove everything again, optionally including settings and logs:
+
+```powershell
+.\ImmichBridge.exe --uninstall
+```
+
+Register the protocol handler for the current build without installing it, which is handy while developing:
 
 ```powershell
 dotnet run --project .\src\ImmichBridge -- --register-protocol
 ```
+
+`--check` reports a protocol registered this way as failing, because it points outside the install folder.
 
 Run the setup wizard:
 
@@ -52,7 +66,7 @@ Run the setup wizard:
 dotnet run --project .\src\ImmichBridge -- --setup
 ```
 
-Check config, mappings, protocol registration, and log path:
+Check config, mappings, install location, protocol registration, and log path:
 
 ```powershell
 dotnet run --project .\src\ImmichBridge -- --check

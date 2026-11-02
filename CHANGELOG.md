@@ -2,6 +2,14 @@
 
 All notable changes to Immich Bridge are tracked here.
 
+## Unreleased
+
+- Setup now installs Immich Bridge to `%LOCALAPPDATA%\Programs\ImmichBridge`, so the browser link no longer breaks when the downloaded file is moved, deleted, or run from inside the ZIP.
+- Running a newer downloaded copy offers to update the installed one; `--install` and `--uninstall` do the same from the command line.
+- Added a Start menu entry for rerunning setup and a Settings > Apps entry for uninstalling.
+- `--check` now reports when the browser link points outside the install folder.
+- Releases include the standalone `ImmichBridge-win-x64-vX.Y.Z.exe`, and the app has its own icon.
+
 ## 0.4.1
 
 - Fixed browser extension updates and restarts repeatedly opening the setup page.

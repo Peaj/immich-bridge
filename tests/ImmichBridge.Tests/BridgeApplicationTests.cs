@@ -103,6 +103,34 @@ public sealed class BridgeApplicationTests
         Assert.Equal(Path.GetFullPath(@"Z:\Photos\img.jpg"), launcher.SystemOpenWithPath);
     }
 
+    [Fact]
+    public void Run_InstallCopiesExecutableAndRegistersInstalledCopy()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ImmichBridge.Tests", Guid.NewGuid().ToString("N"));
+        var downloadedPath = Path.Combine(root, "Downloads", "ImmichBridge.exe");
+        Directory.CreateDirectory(Path.GetDirectoryName(downloadedPath)!);
+        File.WriteAllText(downloadedPath, "exe");
+        var installer = new AppInstaller(Path.Combine(root, "Programs", "ImmichBridge"));
+        var registrar = new RecordingRegistrar();
+        var installRegistration = new RecordingInstallRegistration();
+
+        var app = new BridgeApplication(
+            new RecordingLauncher(),
+            registrar,
+            new ConfigLoader(Path.Combine(root, "config.json")),
+            TextWriter.Null,
+            installer: installer,
+            installRegistration: installRegistration,
+            executablePath: downloadedPath);
+
+        var exitCode = app.Run(["--install"]);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(File.Exists(installer.ExecutablePath));
+        Assert.Equal(installer.ExecutablePath, registrar.RegisteredPath);
+        Assert.Equal(installer.ExecutablePath, installRegistration.RegisteredPath);
+    }
+
     private static string WriteConfig(BridgeConfig config)
     {
         var path = Path.Combine(Path.GetTempPath(), "ImmichBridge.Tests", Guid.NewGuid().ToString("N"), "config.json");
@@ -136,9 +164,12 @@ public sealed class BridgeApplicationTests
     {
         public bool Registered { get; set; } = true;
 
+        public string? RegisteredPath { get; private set; }
+
         public void Register(string executablePath)
         {
             Registered = true;
+            RegisteredPath = executablePath;
         }
 
         public void Unregister()
@@ -149,6 +180,26 @@ public sealed class BridgeApplicationTests
         public bool IsRegistered(string executablePath)
         {
             return Registered;
+        }
+
+        public string? GetRegisteredExecutablePath()
+        {
+            return RegisteredPath;
+        }
+    }
+
+    private sealed class RecordingInstallRegistration : IInstallRegistration
+    {
+        public string? RegisteredPath { get; private set; }
+
+        public void Register(string executablePath, Version version)
+        {
+            RegisteredPath = executablePath;
+        }
+
+        public void Unregister()
+        {
+            RegisteredPath = null;
         }
     }
 }
