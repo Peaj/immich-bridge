@@ -9,6 +9,31 @@ public enum BridgeAction
 
 public sealed record ProtocolRequest(BridgeAction Action, string RemotePath, string? AppId);
 
+// An action this version does not know usually means the browser integration is newer than
+// the companion app, so the message points the user to an update instead of a bare error.
+public sealed class UnsupportedActionException : InvalidOperationException
+{
+    public const string DownloadUrl = "https://github.com/Peaj/immich-bridge/releases/latest";
+    private const int MaxDisplayedActionLength = 40;
+
+    public UnsupportedActionException(string actionName)
+        : base(BuildMessage(actionName))
+    {
+        ActionName = actionName;
+    }
+
+    public string ActionName { get; }
+
+    private static string BuildMessage(string actionName)
+    {
+        var version = typeof(UnsupportedActionException).Assembly.GetName().Version?.ToString(3) ?? "unknown";
+        var displayedAction = actionName.Length > MaxDisplayedActionLength
+            ? actionName[..MaxDisplayedActionLength] + "…"
+            : actionName;
+        return $"Immich Bridge {version} does not support the '{displayedAction}' action. It was probably added in a newer version of Immich Bridge.";
+    }
+}
+
 public static class ProtocolRequestParser
 {
     public const string ProtocolScheme = "immich-bridge";
@@ -38,7 +63,7 @@ public static class ProtocolRequestParser
             "reveal" => new ProtocolRequest(BridgeAction.Reveal, remotePath, null),
             "open" => new ProtocolRequest(BridgeAction.Open, remotePath, GetOptionalAppId(query)),
             "copy" => new ProtocolRequest(BridgeAction.Copy, remotePath, null),
-            _ => throw new InvalidOperationException($"Unknown Immich Bridge action '{actionName}'.")
+            _ => throw new UnsupportedActionException(actionName)
         };
     }
 

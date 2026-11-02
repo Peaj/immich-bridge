@@ -44,10 +44,22 @@ public sealed class ProtocolRequestParserTests
     [Fact]
     public void Parse_RejectsUnknownAction()
     {
-        var exception = Assert.Throws<InvalidOperationException>(
+        var exception = Assert.Throws<UnsupportedActionException>(
             () => ProtocolRequestParser.Parse("immich-bridge://delete?path=%2Fmnt%2Fphotos%2Fimg.jpg"));
 
-        Assert.Contains("Unknown", exception.Message);
+        Assert.Equal("delete", exception.ActionName);
+        Assert.Contains("newer version", exception.Message);
+    }
+
+    [Fact]
+    public void Parse_ShortensLongUnknownActionInMessage()
+    {
+        var actionName = new string('x', 60);
+
+        var exception = Assert.Throws<UnsupportedActionException>(
+            () => ProtocolRequestParser.Parse($"immich-bridge://{actionName}?path=%2Fmnt%2Fphotos%2Fimg.jpg"));
+
+        Assert.DoesNotContain(actionName, exception.Message);
     }
 
     [Fact]
