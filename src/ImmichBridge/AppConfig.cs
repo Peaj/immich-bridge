@@ -183,6 +183,9 @@ public static class BridgePaths
     public static string AppDataDirectory =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ImmichBridge");
 
+    public static string InstallDirectory =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "ImmichBridge");
+
     public static string ConfigFile => Path.Combine(AppDataDirectory, "config.json");
 
     public static string DefaultLogFile => Path.Combine(AppDataDirectory, "logs", "helper.log");

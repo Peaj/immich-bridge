@@ -40,11 +40,25 @@ Prefer mappings that point to external libraries or other user-managed media fol
 
 ## Companion App Commands
 
-Register the protocol handler:
+Install the running build to `%LOCALAPPDATA%\Programs\ImmichBridge`, register the protocol handler for the installed copy, and add the Start menu shortcut and Settings > Apps entry:
+
+```powershell
+.\ImmichBridge.exe --install
+```
+
+Setup does the same when you finish it, and launching a downloaded copy without arguments offers to install or update. Remove everything again, optionally including settings and logs:
+
+```powershell
+.\ImmichBridge.exe --uninstall
+```
+
+Register the protocol handler for the current build without installing it, which is handy while developing:
 
 ```powershell
 dotnet run --project .\src\ImmichBridge -- --register-protocol
 ```
+
+`--check` reports a protocol registered this way as failing, because it points outside the install folder.
 
 Run the setup wizard:
 
@@ -52,7 +66,7 @@ Run the setup wizard:
 dotnet run --project .\src\ImmichBridge -- --setup
 ```
 
-Check config, mappings, protocol registration, and log path:
+Check config, mappings, install location, protocol registration, and log path:
 
 ```powershell
 dotnet run --project .\src\ImmichBridge -- --check
@@ -109,6 +123,17 @@ npm run check:extension
 npm run lint:extension
 npm run build:extensions
 ```
+
+### Test builds from CI
+
+Every CI run, for pull requests and for `main`, uploads test builds that are kept for 14 days. Download them from the **Artifacts** section of the run's summary page in GitHub Actions:
+
+- `ImmichBridge-win-x64-buildN`: the single-file `ImmichBridge.exe`, built the same way as a release.
+- `immich-bridge-extensions-buildN`:
+  - `immich-bridge-firefox.zip`: load it in `about:debugging` > **This Firefox** > **Load Temporary Add-on**.
+  - `chromium` and `edge`: load these folders unpacked from `chrome://extensions` or `edge://extensions` with developer mode enabled.
+
+Test builds carry the version from the project files, so a build made after a release reports the same version as that release.
 
 ## Releases
 

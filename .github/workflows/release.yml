@@ -108,6 +108,7 @@ jobs:
         run: |
           $version = "${{ github.ref_name }}"
           Compress-Archive -Path .\artifacts\ImmichBridge-win-x64\* -DestinationPath ".\artifacts\ImmichBridge-win-x64-$version.zip" -Force
+          Copy-Item .\artifacts\ImmichBridge-win-x64\ImmichBridge.exe ".\artifacts\ImmichBridge-win-x64-$version.exe"
           Copy-Item .\userscript\immich-bridge.user.js ".\artifacts\immich-bridge-$version.user.js"
           $builtFirefoxExtension = Get-ChildItem .\artifacts\browser-extension -Filter *.zip | Select-Object -First 1
           $builtChromiumExtension = Get-ChildItem .\artifacts\chromium-extension -Filter *.zip | Select-Object -First 1
@@ -116,7 +117,7 @@ jobs:
           Copy-Item $builtChromiumExtension.FullName ".\artifacts\immich-bridge-chromium-$version.zip"
           Copy-Item $builtEdgeExtension.FullName ".\artifacts\immich-bridge-edge-$version.zip"
           Get-ChildItem .\artifacts -File |
-            Where-Object { $_.Name -like "*.zip" -or $_.Name -like "*.user.js" } |
+            Where-Object { $_.Name -like "*.zip" -or $_.Name -like "*.exe" -or $_.Name -like "*.user.js" } |
             Get-FileHash -Algorithm SHA256 |
             ForEach-Object { "$($_.Hash.ToLowerInvariant())  $(Split-Path $_.Path -Leaf)" } |
             Set-Content .\artifacts\SHA256SUMS.txt
@@ -165,6 +166,7 @@ jobs:
         with:
           body_path: artifacts/RELEASE_NOTES.md
           files: |
+            artifacts/ImmichBridge-win-x64-${{ github.ref_name }}.exe
             artifacts/ImmichBridge-win-x64-${{ github.ref_name }}.zip
             artifacts/immich-bridge-${{ github.ref_name }}.user.js
             artifacts/immich-bridge-firefox-${{ github.ref_name }}.zip

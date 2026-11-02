@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Drawing;
-using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 namespace ImmichBridge;
@@ -15,9 +14,10 @@ public sealed class SetupWizardForm : Form
     private const string GitHubUrl = "https://github.com/Peaj/immich-bridge";
 
     private readonly ConfigService configService;
-    private readonly IProtocolRegistrar registrar;
     private readonly IPlatformLauncher launcher;
     private readonly string executablePath;
+    private readonly string installDirectory;
+    private readonly Func<string> install;
     private readonly List<Panel> pages = [];
     private readonly Button backButton = new();
     private readonly Button nextButton = new();
@@ -28,23 +28,26 @@ public sealed class SetupWizardForm : Form
     private readonly TextBox localFilePathBox = new();
     private readonly Label validationLabel = new();
     private readonly Label protocolLabel = new();
+    private readonly Label installedLabel = new();
     private readonly Button testRevealButton = new();
     private string? validatedLocalSamplePath;
     private int pageIndex;
 
     public SetupWizardForm(
         ConfigService configService,
-        IProtocolRegistrar registrar,
         IPlatformLauncher launcher,
-        string executablePath)
+        string executablePath,
+        string installDirectory,
+        Func<string> install)
     {
         this.configService = configService;
-        this.registrar = registrar;
         this.launcher = launcher;
         this.executablePath = executablePath;
+        this.installDirectory = installDirectory;
+        this.install = install;
 
         Text = "Immich Bridge Setup";
-        Icon = TryLoadWindowIcon();
+        Icon = TryLoadWindowIcon(executablePath);
         StartPosition = FormStartPosition.CenterScreen;
         MinimumSize = new Size(680, 460);
         Size = new Size(760, 520);
@@ -227,10 +230,10 @@ public sealed class SetupWizardForm : Form
 
     private Panel CreateProtocolPage()
     {
-        var content = CreateContentLayout("Browser Link");
+        var content = CreateContentLayout("Install");
         protocolLabel.AutoSize = true;
         protocolLabel.MaximumSize = new Size(640, 0);
-        protocolLabel.Text = "Immich Bridge will register its local browser link so clicks from Immich can be handed to this app.\n\nThis is registered only for your Windows user account and does not require administrator rights.";
+        protocolLabel.Text = $"Immich Bridge will install itself to:\n{installDirectory}\n\nIt then registers its local browser link so clicks from Immich are handed to the installed copy, and adds a Start menu entry for running setup again. You can uninstall it any time from Settings > Apps.\n\nEverything is installed only for your Windows user account and does not require administrator rights.";
         content.Controls.Add(protocolLabel);
         return CreatePage(content);
     }
@@ -238,6 +241,10 @@ public sealed class SetupWizardForm : Form
     private Panel CreateFinishPage()
     {
         var content = CreateContentLayout("Ready to Use");
+        installedLabel.AutoSize = true;
+        installedLabel.Dock = DockStyle.Top;
+        installedLabel.MaximumSize = new Size(640, 0);
+        installedLabel.Padding = new Padding(0, 0, 0, 12);
         var body = CreateBodyLabel(
             "Immich Bridge is configured. The last step is adding the browser integration to Immich.\n\n1. Install the add-on for your browser.\n2. Enter your Immich URL in the add-on options page and approve access for that site.\n3. Refresh Immich and open an asset. The Immich Bridge button appears in the asset toolbar.\n\nIf your browser is unsupported, use the Tampermonkey userscript fallback.");
 
@@ -273,6 +280,7 @@ public sealed class SetupWizardForm : Form
             FirefoxAddonUrl));
         flow.Controls.Add(openUserscriptButton);
 
+        content.Controls.Add(installedLabel);
         content.Controls.Add(body);
         content.Controls.Add(flow);
         content.Controls.Add(tampermonkeyLink);
@@ -345,8 +353,8 @@ public sealed class SetupWizardForm : Form
 
     private static Control CreateStoreBadgeButton(string fileName, string accessibleName, string fallbackText, string url)
     {
-        var badgePath = FindBrowserExtensionAssetPath("store-badges", fileName);
-        if (badgePath is null)
+        var image = TryLoadEmbeddedImage(fileName);
+        if (image is null)
         {
             var fallbackButton = new Button
             {
@@ -358,7 +366,6 @@ public sealed class SetupWizardForm : Form
             return fallbackButton;
         }
 
-        var image = LoadImageWithoutLockingFile(badgePath);
         const int badgeHeight = 48;
         var badgeWidth = Math.Max(120, (int)Math.Round(image.Width * (badgeHeight / (double)image.Height)));
 
@@ -378,43 +385,26 @@ public sealed class SetupWizardForm : Form
 
     private static PictureBox? CreatePromoTitleImage()
     {
-        var imagePath = FindBrowserExtensionAssetPath("icons", "immich-bridge-promo-title.png");
-        if (imagePath is null)
+        var image = TryLoadEmbeddedImage("immich-bridge-promo-title.png");
+        if (image is null)
         {
             return null;
         }
 
         return new PictureBox
         {
-            Image = LoadImageWithoutLockingFile(imagePath),
+            Image = image,
             SizeMode = PictureBoxSizeMode.Zoom,
             Dock = DockStyle.Fill,
             Margin = new Padding(16, 0, 0, 0)
         };
     }
 
-    private static Icon? TryLoadWindowIcon()
+    private static Icon? TryLoadWindowIcon(string executablePath)
     {
-        var iconPath = FindBrowserExtensionAssetPath("icons", "immich-bridge-64.png");
-        if (iconPath is null)
-        {
-            return null;
-        }
-
         try
         {
-            using var image = LoadImageWithoutLockingFile(iconPath);
-            using var bitmap = new Bitmap(image, new Size(64, 64));
-            var handle = bitmap.GetHicon();
-            try
-            {
-                using var icon = Icon.FromHandle(handle);
-                return (Icon)icon.Clone();
-            }
-            finally
-            {
-                DestroyIcon(handle);
-            }
+            return Icon.ExtractAssociatedIcon(executablePath);
         }
         catch
         {
@@ -422,36 +412,17 @@ public sealed class SetupWizardForm : Form
         }
     }
 
-    private static Image LoadImageWithoutLockingFile(string path)
+    private static Image? TryLoadEmbeddedImage(string fileName)
     {
-        using var stream = File.OpenRead(path);
+        using var stream = typeof(SetupWizardForm).Assembly.GetManifestResourceStream($"ImmichBridge.Assets.{fileName}");
+        if (stream is null)
+        {
+            return null;
+        }
+
         using var image = Image.FromStream(stream);
         return new Bitmap(image);
     }
-
-    private static string? FindBrowserExtensionAssetPath(params string[] relativePathParts)
-    {
-        var roots = new[]
-        {
-            Path.Combine(AppContext.BaseDirectory, "browser-extension"),
-            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "browser-extension")),
-            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "browser-extension"))
-        };
-
-        foreach (var root in roots)
-        {
-            var path = Path.Combine([root, .. relativePathParts]);
-            if (File.Exists(path))
-            {
-                return path;
-            }
-        }
-
-        return null;
-    }
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern bool DestroyIcon(nint hIcon);
 
     private static void OpenUrl(string url)
     {
@@ -497,9 +468,9 @@ public sealed class SetupWizardForm : Form
             return;
         }
 
-        if (pageIndex == 2)
+        if (pageIndex == 2 && !SaveConfigAndInstall())
         {
-            SaveConfigAndRegisterProtocol();
+            return;
         }
 
         if (pageIndex == pages.Count - 1)
@@ -577,12 +548,27 @@ public sealed class SetupWizardForm : Form
         }
     }
 
-    private void SaveConfigAndRegisterProtocol()
+    private bool SaveConfigAndInstall()
     {
-        var config = CreateConfigFromFields();
-        configService.Save(config);
-        registrar.Register(executablePath);
-        protocolLabel.Text = "Protocol registered and config saved.";
+        try
+        {
+            configService.Save(CreateConfigFromFields());
+            var installedPath = install();
+            var ranFromInstallFolder = string.Equals(
+                Path.GetFullPath(executablePath),
+                installedPath,
+                StringComparison.OrdinalIgnoreCase);
+            protocolLabel.Text = $"Installed to {installedPath}, browser link registered, and config saved.";
+            installedLabel.Text = ranFromInstallFolder
+                ? $"Immich Bridge is installed at {installedPath}."
+                : $"Immich Bridge is installed at {installedPath}. You can delete the file you downloaded.";
+            return true;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Immich Bridge", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return false;
+        }
     }
 
     private void TestReveal()
