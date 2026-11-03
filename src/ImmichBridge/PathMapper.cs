@@ -1,5 +1,13 @@
 namespace ImmichBridge;
 
+public sealed class PathNotMappedException : InvalidOperationException
+{
+    public PathNotMappedException(string message)
+        : base(message)
+    {
+    }
+}
+
 public sealed class PathMapper
 {
     private readonly BridgeConfig config;
@@ -29,7 +37,7 @@ public sealed class PathMapper
 
         if (bestMatch is null)
         {
-            throw new InvalidOperationException($"No mapping found for path: {remotePath}");
+            throw new PathNotMappedException($"No mapping found for path: {remotePath}");
         }
 
         var relative = normalizedRemote[bestMatch.NormalizedRemotePrefix.Length..].TrimStart('/');
@@ -39,7 +47,7 @@ public sealed class PathMapper
 
         if (!IsSameOrChildPath(localRoot, localPath))
         {
-            throw new InvalidOperationException($"Mapped path escapes local prefix: {remotePath}");
+            throw new PathNotMappedException($"Mapped path escapes local prefix: {remotePath}");
         }
 
         return localPath;

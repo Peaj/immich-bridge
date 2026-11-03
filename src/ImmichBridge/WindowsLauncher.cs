@@ -48,6 +48,10 @@ public sealed class WindowsLauncher : IPlatformLauncher
     public void CopyToClipboard(string localPath)
     {
         FileClipboard.Copy(localPath);
+    }
+
+    public void ShowCopyNotice(string localPath)
+    {
         System.Windows.Forms.Application.Run(new CopyNoticeForm(localPath));
     }
 

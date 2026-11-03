@@ -6,6 +6,7 @@
   "homepage_url": "https://github.com/Peaj/immich-bridge",
   "minimum_chrome_version": "102",
   "permissions": [
+    "nativeMessaging",
     "scripting",
     "storage"
   ],

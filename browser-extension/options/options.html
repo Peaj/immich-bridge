@@ -32,15 +32,15 @@
         <button id="remove-permission" type="button" class="secondary">Remove access</button>
       </div>
 
-      <section class="companion" aria-labelledby="companion-title">
+      <section id="companion" class="companion" aria-labelledby="companion-title" aria-live="polite">
         <div>
           <h2 id="companion-title">Desktop companion app required</h2>
-          <p>Install the Immich Bridge desktop companion app once to enable Explorer and Open With actions from Immich.</p>
+          <p id="companion-detail">Install the Immich Bridge desktop companion app once to enable Explorer, Copy original, and Open With actions from Immich.</p>
         </div>
-        <a class="link-button" href="https://github.com/Peaj/immich-bridge/releases/latest" target="_blank" rel="noreferrer">Download companion app</a>
+        <a id="companion-download" class="link-button" href="https://github.com/Peaj/immich-bridge/releases/latest" target="_blank" rel="noreferrer">Download companion app</a>
       </section>
 
-      <p class="privacy-note">When you click an Immich Bridge action, the extension passes only the selected asset path to the local companion app through the immich-bridge:// protocol. It does not send page content, asset paths, or telemetry to remote servers.</p>
+      <p class="privacy-note">When you click an Immich Bridge action, the extension passes only the selected asset path to the local companion app, through native messaging or the immich-bridge:// protocol. It does not send page content, asset paths, or telemetry to remote servers.</p>
       <p class="disclaimer">Immich Bridge is an unofficial integration for Immich and is not affiliated with or endorsed by the Immich project.</p>
     </section>
   </main>

@@ -8,6 +8,12 @@ public static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        // Started by a browser: stdin/stdout carry the extension's messages, so no console or dialogs.
+        if (NativeMessagingHost.IsHostLaunch(args))
+        {
+            return RunNativeHost();
+        }
+
         if (!LooksLikeProtocolLaunch(args))
         {
             ConsoleBridge.AttachToParentConsole();
@@ -45,6 +51,30 @@ public static class Program
                 Console.Error.WriteLine(ex.Message);
             }
 
+            return 1;
+        }
+    }
+
+    private static int RunNativeHost()
+    {
+        var logger = new FileLogger();
+        try
+        {
+            var host = new NativeMessagingHost(
+                new ConfigLoader(),
+                new WindowsLauncher(),
+                new WindowsDetachedProcessStarter(),
+                Environment.ProcessPath ?? throw new InvalidOperationException("Unable to determine the Immich Bridge executable path."),
+                logger);
+
+            using var input = Console.OpenStandardInput();
+            using var output = Console.OpenStandardOutput();
+            host.Run(input, output);
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            logger.Error(ex);
             return 1;
         }
     }

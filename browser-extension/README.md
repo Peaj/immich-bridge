@@ -6,7 +6,9 @@ Immich Bridge is an unofficial integration for Immich and is not affiliated with
 
 ## Desktop Companion Required
 
-This add-on requires the Immich Bridge desktop companion app for local file actions. Browser extensions cannot directly open Windows Explorer or launch desktop apps, so the companion app handles those OS-level actions through the `immich-bridge://` protocol.
+This add-on requires the Immich Bridge desktop companion app for local file actions. Browser extensions cannot directly open Windows Explorer or launch desktop apps, so the companion app handles those OS-level actions.
+
+The add-on talks to companion app 0.6 or newer through native messaging (`nativeMessaging` permission). That lets it show whether the companion is installed and up to date, and report results and errors in the page. Older companion versions keep working through the `immich-bridge://` protocol.
 
 Install the latest desktop companion app from the [Immich Bridge latest release](https://github.com/Peaj/immich-bridge/releases/latest).
 

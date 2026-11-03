@@ -19,6 +19,19 @@ public sealed class ConfigValidationTests
     }
 
     [Fact]
+    public void Validate_RejectsMalformedAdditionalExtensionId()
+    {
+        var config = new BridgeConfig
+        {
+            Options = new BridgeOptions { AdditionalExtensionIds = ["chrome-extension://abc/"] }
+        };
+
+        var exception = Assert.Throws<InvalidOperationException>(() => ConfigLoader.Validate(config));
+
+        Assert.Contains("AdditionalExtensionIds", exception.Message);
+    }
+
+    [Fact]
     public void Validate_RejectsAppWithoutExecutablePath()
     {
         var config = new BridgeConfig

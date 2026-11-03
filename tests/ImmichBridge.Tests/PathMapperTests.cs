@@ -49,7 +49,7 @@ public sealed class PathMapperTests
             ]
         });
 
-        var exception = Assert.Throws<InvalidOperationException>(() => mapper.MapPath("/mnt/archive/img.jpg"));
+        var exception = Assert.Throws<PathNotMappedException>(() => mapper.MapPath("/mnt/archive/img.jpg"));
 
         Assert.Contains("No mapping found", exception.Message);
     }
@@ -65,7 +65,7 @@ public sealed class PathMapperTests
             ]
         });
 
-        var exception = Assert.Throws<InvalidOperationException>(() => mapper.MapPath("/mnt/photos/../secret.txt"));
+        var exception = Assert.Throws<PathNotMappedException>(() => mapper.MapPath("/mnt/photos/../secret.txt"));
 
         Assert.Contains("escapes local prefix", exception.Message);
     }

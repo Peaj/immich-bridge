@@ -83,6 +83,15 @@ h1 {
   white-space: nowrap;
 }
 
+.companion .link-button[hidden] {
+  display: none;
+}
+
+.companion.connected {
+  border-color: #9fd3a6;
+  background: #eefaf0;
+}
+
 label {
   display: block;
   margin-bottom: 8px;
@@ -224,6 +233,11 @@ button.secondary:hover {
 
   .companion p {
     color: #cbd5e1;
+  }
+
+  .companion.connected {
+    border-color: #2f6b3a;
+    background: #12271a;
   }
 
   input {
