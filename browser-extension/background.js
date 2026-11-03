@@ -29,7 +29,18 @@
     }
   }
 
-  async function registerContentScript(origin) {
+  // Startup, install, and the options page can all reconfigure at once. Running them one
+  // after another keeps an unregister/register pair from interleaving with another one,
+  // which fails with "already registered".
+  let registrationQueue = Promise.resolve();
+
+  function registerContentScript(origin) {
+    const registration = registrationQueue.then(() => replaceContentScript(origin));
+    registrationQueue = registration.catch(() => {});
+    return registration;
+  }
+
+  async function replaceContentScript(origin) {
     await unregisterContentScript();
 
     if (!origin) {

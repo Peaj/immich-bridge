@@ -37,7 +37,10 @@ function loadBackground(initialStorage = {}, nativeHost = async () => ({ ok: tru
   const storage = { ...initialStorage };
   const sessionStorage = {};
   const nativeMessages = [];
+  const registrationErrors = [];
+  let registeredScript = false;
   let optionsOpenCount = 0;
+  const tick = () => new Promise(resolve => setTimeout(resolve, 1));
   const events = {
     installed: createEvent(),
     startup: createEvent(),
@@ -66,8 +69,20 @@ function loadBackground(initialStorage = {}, nativeHost = async () => ({ ok: tru
       }
     },
     scripting: {
-      registerContentScripts: async () => {},
-      unregisterContentScripts: async () => {}
+      // Mimics the browser: registering an id that is still registered fails.
+      registerContentScripts: async () => {
+        await tick();
+        if (registeredScript) {
+          const error = new Error('Content script with id "immich-bridge-content" is already registered.');
+          registrationErrors.push(error);
+          throw error;
+        }
+        registeredScript = true;
+      },
+      unregisterContentScripts: async () => {
+        await tick();
+        registeredScript = false;
+      }
     },
     storage: {
       local: createStorageArea(storage),
@@ -86,6 +101,7 @@ function loadBackground(initialStorage = {}, nativeHost = async () => ({ ok: tru
     storage,
     sessionStorage,
     nativeMessages,
+    registrationErrors,
     getOptionsOpenCount: () => optionsOpenCount
   };
 }
@@ -134,6 +150,18 @@ test('still opens options after an explicit toolbar click', async () => {
   await background.events.actionClicked.dispatch();
 
   assert.equal(background.getOptionsOpenCount(), 1);
+});
+
+test('concurrent reconfiguration does not register the content script twice', async () => {
+  const background = loadBackground({ immichOrigin, onboardingShown: true });
+
+  await Promise.all([
+    background.events.installed.dispatch({ reason: 'update' }),
+    background.events.startup.dispatch(),
+    send(background, { type: 'immich-bridge:configure-origin', origin: immichOrigin })
+  ]);
+
+  assert.equal(background.registrationErrors.length, 0);
 });
 
 test('runs actions through the native host', async () => {

@@ -11,6 +11,7 @@ The browser add-ons now ask for the `nativeMessaging` permission, so Chrome and 
 - The action menu hides actions the installed companion doesn't support and links to the update when the companion is older than the add-on.
 - Companion apps before 0.6 and the userscript keep working through the `immich-bridge://` link.
 - The companion app registers its native messaging host for Chrome, Edge, and Firefox when it installs, and removes it when it uninstalls. `--check` reports the registration.
+- Fixed an "already registered" error in the browser console when the add-on is installed or its Immich URL is saved.
 - Browser extension packages now contain only the files the extension loads, instead of also shipping store listing material such as the artwork source file, screenshots, and store badges. The Firefox package shrinks from 10.9 MB to under 40 KB.
 - Firefox store submissions sign the released package instead of the repository folder.
 - The companion app ZIP no longer includes the browser extension folder; the setup wizard's artwork has been built into the app since 0.5.0.
