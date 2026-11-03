@@ -43,6 +43,15 @@ jobs:
         with:
           node-version: 22
 
+      # Sign the released package rather than the repository folder, which also holds
+      # store listing material that must not ship.
+      - name: Download Firefox package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "${{ inputs.release_tag }}" --pattern "immich-bridge-firefox-${{ inputs.release_tag }}.zip" --dir artifacts/store-packages
+          unzip -q "artifacts/store-packages/immich-bridge-firefox-${{ inputs.release_tag }}.zip" -d artifacts/firefox-extension/source
+
       - name: Submit to Mozilla Add-ons
         env:
           WEB_EXT_API_KEY: ${{ secrets.AMO_JWT_ISSUER }}
@@ -51,7 +60,7 @@ jobs:
           WEB_EXT_APPROVAL_TIMEOUT: 0
         run: >
           npx --yes web-ext sign
-          --source-dir browser-extension
+          --source-dir artifacts/firefox-extension/source
           --artifacts-dir artifacts/firefox-signed
           --amo-metadata browser-extension/amo-metadata.json
 

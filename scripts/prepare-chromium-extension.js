@@ -1,29 +1,9 @@
-const fs = require('node:fs');
 const path = require('node:path');
+const { prepareExtensionSource, repoRoot } = require('./prepare-extension-source');
 
-const repoRoot = path.resolve(__dirname, '..');
-const sourceRoot = path.join(repoRoot, 'browser-extension');
-const outputRoot = path.join(repoRoot, 'artifacts', 'chromium-extension', 'source');
-
-const copiedEntries = [
-  'background.js',
-  'content',
-  'icons',
-  'options'
-];
-
-fs.rmSync(outputRoot, { recursive: true, force: true });
-fs.mkdirSync(outputRoot, { recursive: true });
-
-for (const entry of copiedEntries) {
-  fs.cpSync(path.join(sourceRoot, entry), path.join(outputRoot, entry), {
-    recursive: true
-  });
-}
-
-fs.copyFileSync(
-  path.join(sourceRoot, 'manifest.chromium.json'),
-  path.join(outputRoot, 'manifest.json')
-);
+const outputRoot = prepareExtensionSource({
+  manifestFile: 'manifest.chromium.json',
+  outputRoot: path.join(repoRoot, 'artifacts', 'chromium-extension', 'source')
+});
 
 console.log(`Prepared Chromium extension source at ${path.relative(repoRoot, outputRoot)}`);

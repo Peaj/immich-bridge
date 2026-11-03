@@ -15,11 +15,14 @@ The extension only runs on the Immich URL you configure. When you click an Immic
 ## Local Testing
 
 ```powershell
-npx --yes web-ext lint --source-dir .\browser-extension
+npm run lint:firefox-extension
 npx --yes web-ext run --source-dir .\browser-extension
+npm run build:firefox-extension
 npm run build:chromium-extension
 npm run build:edge-extension
 ```
+
+The build scripts package only the files the extension loads at runtime, prepared under `artifacts\<browser>-extension\source`. Store listing material in this folder (screenshots, store badges, artwork sources, `amo-metadata.json`) is not shipped.
 
 After Firefox opens, use the Immich Bridge options page to enter the Immich base URL. The extension requests host permission only for that origin, then injects the toolbar button on Immich asset detail pages.
 

@@ -96,9 +96,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force .\artifacts\ImmichBridge-win-x64\userscript | Out-Null
-          New-Item -ItemType Directory -Force .\artifacts\ImmichBridge-win-x64\browser-extension | Out-Null
           Copy-Item .\userscript\immich-bridge.user.js .\artifacts\ImmichBridge-win-x64\userscript\immich-bridge.user.js
-          Copy-Item .\browser-extension\* .\artifacts\ImmichBridge-win-x64\browser-extension -Recurse
           Copy-Item .\README.md .\artifacts\ImmichBridge-win-x64\README.md
           Copy-Item .\PRIVACY.md .\artifacts\ImmichBridge-win-x64\PRIVACY.md
           Copy-Item .\CHANGELOG.md .\artifacts\ImmichBridge-win-x64\CHANGELOG.md
@@ -191,6 +189,17 @@ jobs:
         with:
           node-version: 22
 
+      - name: Download browser store packages
+        uses: actions/download-artifact@v4
+        with:
+          name: browser-store-packages-${{ github.ref_name }}
+          path: artifacts/store-packages
+
+      # Sign the released package rather than the repository folder, which also holds
+      # store listing material that must not ship.
+      - name: Unpack Firefox package
+        run: unzip -q "artifacts/store-packages/immich-bridge-firefox-${{ github.ref_name }}.zip" -d artifacts/firefox-extension/source
+
       - name: Submit to Mozilla Add-ons
         env:
           WEB_EXT_API_KEY: ${{ secrets.AMO_JWT_ISSUER }}
@@ -199,7 +208,7 @@ jobs:
           WEB_EXT_APPROVAL_TIMEOUT: 0
         run: >
           npx --yes web-ext sign
-          --source-dir browser-extension
+          --source-dir artifacts/firefox-extension/source
           --artifacts-dir artifacts/firefox-signed
           --amo-metadata browser-extension/amo-metadata.json
 

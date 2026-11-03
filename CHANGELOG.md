@@ -2,6 +2,12 @@
 
 All notable changes to Immich Bridge are tracked here.
 
+## Unreleased
+
+- Browser extension packages now contain only the files the extension loads, instead of also shipping store listing material such as the artwork source file, screenshots, and store badges. The Firefox package shrinks from 10.9 MB to under 40 KB.
+- Firefox store submissions sign the released package instead of the repository folder.
+- The companion app ZIP no longer includes the browser extension folder; the setup wizard's artwork has been built into the app since 0.5.0.
+
 ## 0.5.0
 
 The browser add-ons' new `Copy original` action needs Immich Bridge 0.5.0 or newer. Update the companion app before using it.
