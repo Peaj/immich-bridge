@@ -26,6 +26,9 @@
   const toolbarHostId = 'immich-bridge-toolbar-host';
   const menuId = 'immich-bridge-menu';
   const assetApiPrefix = '/api/assets/';
+  const toastId = 'immich-bridge-toast';
+  const latestReleaseUrl = 'https://github.com/Peaj/immich-bridge/releases/latest';
+  const extensionVersion = extensionApi.runtime.getManifest().version;
   const actions = [
     { label: 'Reveal in Explorer', action: 'reveal', icon: 'folder' },
     { label: 'Copy original', action: 'copy', icon: 'copy' },
@@ -33,6 +36,8 @@
   ];
   let lastAssetId = null;
   let cachedAsset = null;
+  let companionStatus = null;
+  let toastTimer = 0;
   let toolbarRefreshTimer = 0;
   let lastLocation = window.location.href;
   let mutationRefreshTimer = 0;
@@ -81,6 +86,25 @@
       throw new Error('Immich asset did not include originalPath.');
     }
 
+    if (!appId) {
+      const reply = await runThroughCompanion(action, originalPath);
+      if (reply && reply.ok) {
+        if (action === 'copy') {
+          showToast(`Copied ${asset.originalFileName || originalPath.split('/').pop()}`);
+        }
+        return;
+      }
+
+      if (reply && !reply.fallback) {
+        showToast(reply.message || reply.error || 'Immich Bridge could not run this action.', {
+          error: true,
+          updateLink: reply.code === 'unsupported-action'
+        });
+        return;
+      }
+    }
+
+    // Companion versions before 0.6 (and the userscript) only understand the browser link.
     const query = new URLSearchParams();
     query.set('path', originalPath);
     if (appId) {
@@ -90,15 +114,104 @@
     window.location.href = `${protocol}://${action}?${query.toString()}`;
   }
 
+  async function runThroughCompanion(action, path) {
+    try {
+      return await extensionApi.runtime.sendMessage({ type: 'immich-bridge:run', action, path });
+    } catch (error) {
+      console.warn('[Immich Bridge] Unable to reach the extension background; using the browser link.', error);
+      return { fallback: true };
+    }
+  }
+
+  async function refreshCompanionStatus() {
+    try {
+      companionStatus = await extensionApi.runtime.sendMessage({ type: 'immich-bridge:status' });
+    } catch (error) {
+      companionStatus = null;
+    }
+  }
+
+  function compareVersions(left, right) {
+    const leftParts = String(left).split('.').map(Number);
+    const rightParts = String(right).split('.').map(Number);
+    for (let index = 0; index < Math.max(leftParts.length, rightParts.length); index++) {
+      const difference = (leftParts[index] || 0) - (rightParts[index] || 0);
+      if (difference !== 0) {
+        return difference;
+      }
+    }
+
+    return 0;
+  }
+
+  function availableMenuItems() {
+    if (!companionStatus || !companionStatus.connected) {
+      return actions;
+    }
+
+    const supported = actions.filter(item => companionStatus.actions.includes(item.action));
+    if (compareVersions(companionStatus.version, extensionVersion) < 0) {
+      supported.push({ label: 'Update Immich Bridge', url: latestReleaseUrl, icon: 'update', muted: true });
+    }
+
+    return supported;
+  }
+
+  function showToast(message, options = {}) {
+    document.getElementById(toastId)?.remove();
+    window.clearTimeout(toastTimer);
+
+    const toast = document.createElement('div');
+    toast.id = toastId;
+    toast.setAttribute('role', options.error ? 'alert' : 'status');
+    toast.style.cssText = [
+      'position:fixed',
+      'z-index:100000',
+      'left:50%',
+      'bottom:24px',
+      'transform:translateX(-50%)',
+      'max-width:min(560px, calc(100vw - 32px))',
+      'display:flex',
+      'align-items:center',
+      'gap:12px',
+      'border-radius:8px',
+      `background:${options.error ? '#7f1d1d' : '#1f2937'}`,
+      'color:#fff',
+      'box-shadow:0 10px 24px rgba(0,0,0,.28)',
+      'font:500 14px system-ui,sans-serif',
+      'padding:12px 16px'
+    ].join(';');
+    toast.appendChild(document.createTextNode(`Immich Bridge: ${message}`));
+
+    if (options.updateLink) {
+      const link = document.createElement('a');
+      link.href = latestReleaseUrl;
+      link.target = '_blank';
+      link.rel = 'noreferrer';
+      link.textContent = 'Update';
+      link.style.cssText = 'color:#fff;font-weight:600;text-decoration:underline;white-space:nowrap';
+      toast.appendChild(link);
+    }
+
+    toast.addEventListener('click', event => {
+      if (event.target === toast) {
+        toast.remove();
+      }
+    });
+    document.body.appendChild(toast);
+    toastTimer = window.setTimeout(() => toast.remove(), options.error ? 8000 : 3000);
+  }
+
   function showButtonError(error) {
     console.error('[Immich Bridge]', error);
-    window.alert(`Immich Bridge: ${error.message || error}`);
+    showToast(error.message || String(error), { error: true });
   }
 
   const iconPaths = {
     folder: 'M10,4L12,6H20A2,2 0 0,1 22,8V18A2,2 0 0,1 20,20H4A2,2 0 0,1 2,18V6A2,2 0 0,1 4,4H10M4,8V18H20V8H4Z',
     copy: 'M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z',
-    app: 'M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3H14M19,19H5V5H12V3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z'
+    app: 'M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3H14M19,19H5V5H12V3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z',
+    update: 'M12,18A6,6 0 0,1 6,12C6,11 6.25,10.03 6.7,9.2L5.24,7.74C4.46,8.97 4,10.43 4,12A8,8 0 0,0 12,20V23L16,19L12,15M12,4V1L8,5L12,9V6A6,6 0 0,1 18,12C18,13 17.75,13.97 17.3,14.8L18.76,16.26C19.54,15.03 20,13.57 20,12A8,8 0 0,0 12,4Z'
   };
 
   function createSvgIcon(kind, size) {
@@ -147,7 +260,7 @@
       'width:100%',
       'border:0',
       'background:transparent',
-      'color:#111827',
+      `color:${item.muted ? '#4b5563' : '#111827'}`,
       'cursor:pointer',
       'font:500 14px system-ui,sans-serif',
       'padding:13px 16px',
@@ -165,6 +278,11 @@
       event.preventDefault();
       event.stopPropagation();
       closeMenu();
+      if (item.url) {
+        window.open(item.url, '_blank', 'noreferrer');
+        return;
+      }
+
       try {
         await launch(item.action, item.appId);
       } catch (error) {
@@ -189,7 +307,7 @@
       'box-shadow:0 10px 24px rgba(0,0,0,.28)',
       'padding:4px 0'
     ].join(';');
-    actions.forEach(action => menu.appendChild(createMenuItem(action)));
+    availableMenuItems().forEach(item => menu.appendChild(createMenuItem(item)));
     return menu;
   }
 
@@ -204,6 +322,8 @@
     document.body.appendChild(menu);
     positionMenu(button, menu);
     button.setAttribute('aria-expanded', 'true');
+    // Picks up a companion install or update for the next time the menu opens.
+    refreshCompanionStatus();
   }
 
   function closeMenu() {
@@ -358,5 +478,6 @@
   new MutationObserver(scheduleMutationRefresh).observe(document.documentElement, { childList: true, subtree: true });
   window.setInterval(scheduleToolbarRefreshIfLocationChanged, 250);
   scheduleToolbarRefresh();
+  refreshCompanionStatus();
   }
 })();

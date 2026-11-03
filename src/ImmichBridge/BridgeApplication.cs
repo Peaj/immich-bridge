@@ -13,6 +13,7 @@ public sealed class BridgeApplication
     private readonly FileLogger logger;
     private readonly AppInstaller installer;
     private readonly IInstallRegistration installRegistration;
+    private readonly INativeHostRegistrar nativeHostRegistrar;
     private readonly string executablePath;
 
     public BridgeApplication(
@@ -23,8 +24,10 @@ public sealed class BridgeApplication
         FileLogger? logger = null,
         AppInstaller? installer = null,
         IInstallRegistration? installRegistration = null,
-        string? executablePath = null)
+        string? executablePath = null,
+        INativeHostRegistrar? nativeHostRegistrar = null)
     {
+        this.nativeHostRegistrar = nativeHostRegistrar ?? new WindowsNativeHostRegistrar();
         this.launcher = launcher;
         this.registrar = registrar;
         this.configLoader = configLoader;
@@ -78,7 +81,7 @@ public sealed class BridgeApplication
         if (StringComparer.OrdinalIgnoreCase.Equals(command, "--install"))
         {
             var installedPath = Install();
-            output.WriteLine($"Installed Immich Bridge to {installedPath} and registered the immich-bridge:// protocol.");
+            output.WriteLine($"Installed Immich Bridge to {installedPath} and registered its browser integration.");
             return 0;
         }
 
@@ -90,15 +93,16 @@ public sealed class BridgeApplication
 
         if (StringComparer.OrdinalIgnoreCase.Equals(command, "--register-protocol"))
         {
-            registrar.Register(executablePath);
-            output.WriteLine("Registered immich-bridge:// protocol for Immich Bridge.");
+            RegisterBrowserIntegration(executablePath);
+            output.WriteLine("Registered the immich-bridge:// protocol and native messaging host for Immich Bridge.");
             return 0;
         }
 
         if (StringComparer.OrdinalIgnoreCase.Equals(command, "--unregister-protocol"))
         {
             registrar.Unregister();
-            output.WriteLine("Unregistered immich-bridge:// protocol for Immich Bridge.");
+            nativeHostRegistrar.Unregister();
+            output.WriteLine("Unregistered the immich-bridge:// protocol and native messaging host for Immich Bridge.");
             return 0;
         }
 
@@ -140,6 +144,7 @@ public sealed class BridgeApplication
             output.WriteLine($"Copying original file to the clipboard: {localPath}");
             logger.Info($"CLI copy requested for '{args[1]}' -> '{localPath}'.");
             launcher.CopyToClipboard(localPath);
+            launcher.ShowCopyNotice(localPath);
             return 0;
         }
 
@@ -165,6 +170,7 @@ public sealed class BridgeApplication
         {
             launcher.CopyToClipboard(localPath);
             logger.Info($"Original file copied to the clipboard: '{localPath}'.");
+            launcher.ShowCopyNotice(localPath);
             return;
         }
 
@@ -197,21 +203,32 @@ public sealed class BridgeApplication
 
     private string MapAndValidateLocalPath(string remotePath, BridgeConfig? config = null)
     {
-        config ??= configLoader.Load();
-        var localPath = new PathMapper(config).MapPath(remotePath);
+        return new LocalPathResolver(configLoader).Resolve(remotePath, config);
+    }
 
-        if (config.Options.VerifyLocalFileExists && !File.Exists(localPath))
+    private void RegisterBrowserIntegration(string targetExecutablePath)
+    {
+        registrar.Register(targetExecutablePath);
+        nativeHostRegistrar.Register(targetExecutablePath, LoadAdditionalExtensionIds());
+    }
+
+    private IReadOnlyList<string> LoadAdditionalExtensionIds()
+    {
+        try
         {
-            throw new FileNotFoundException($"Mapped local file does not exist: {localPath}", localPath);
+            return configLoader.Load().Options.AdditionalExtensionIds;
         }
-
-        return localPath;
+        catch (ConfigNotFoundException)
+        {
+            // Installing before setup: only the store extensions are allowed.
+            return [];
+        }
     }
 
     private string Install()
     {
         var installedPath = installer.Install(executablePath);
-        registrar.Register(installedPath);
+        RegisterBrowserIntegration(installedPath);
         installRegistration.Register(installedPath, AppInstaller.GetFileVersion(installedPath)!);
         logger.Info($"Installed '{executablePath}' to '{installedPath}'.");
         return installedPath;
@@ -269,6 +286,7 @@ public sealed class BridgeApplication
             MessageBoxDefaultButton.Button2) == DialogResult.Yes;
 
         registrar.Unregister();
+        nativeHostRegistrar.Unregister();
         installRegistration.Unregister();
         installer.Uninstall(executablePath);
         logger.Info("Immich Bridge uninstalled.");
@@ -333,7 +351,7 @@ public sealed class BridgeApplication
 
     private int RunCheck()
     {
-        var check = new SystemCheck(configLoader, registrar, installer);
+        var check = new SystemCheck(configLoader, registrar, installer, nativeHostRegistrar);
         var results = check.Run();
         foreach (var result in results)
         {

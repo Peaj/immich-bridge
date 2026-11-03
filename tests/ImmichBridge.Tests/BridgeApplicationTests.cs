@@ -113,6 +113,7 @@ public sealed class BridgeApplicationTests
         var installer = new AppInstaller(Path.Combine(root, "Programs", "ImmichBridge"));
         var registrar = new RecordingRegistrar();
         var installRegistration = new RecordingInstallRegistration();
+        var nativeHostRegistrar = new RecordingNativeHostRegistrar();
 
         var app = new BridgeApplication(
             new RecordingLauncher(),
@@ -121,7 +122,8 @@ public sealed class BridgeApplicationTests
             TextWriter.Null,
             installer: installer,
             installRegistration: installRegistration,
-            executablePath: downloadedPath);
+            executablePath: downloadedPath,
+            nativeHostRegistrar: nativeHostRegistrar);
 
         var exitCode = app.Run(["--install"]);
 
@@ -129,6 +131,35 @@ public sealed class BridgeApplicationTests
         Assert.True(File.Exists(installer.ExecutablePath));
         Assert.Equal(installer.ExecutablePath, registrar.RegisteredPath);
         Assert.Equal(installer.ExecutablePath, installRegistration.RegisteredPath);
+        Assert.Equal(installer.ExecutablePath, nativeHostRegistrar.RegisteredPath);
+        Assert.Empty(nativeHostRegistrar.AdditionalExtensionIds!);
+    }
+
+    [Fact]
+    public void Run_RegisterProtocolAlsoRegistersNativeHostWithConfiguredExtraIds()
+    {
+        var configPath = WriteConfig(new BridgeConfig
+        {
+            Mappings = [new PathMapping { RemotePrefix = "/mnt/photos", LocalPrefix = @"Z:\Photos" }],
+            Options = new BridgeOptions { AdditionalExtensionIds = ["bjonmmnackaemelhjpkkhgoeocgfekam"] }
+        });
+        var registrar = new RecordingRegistrar();
+        var nativeHostRegistrar = new RecordingNativeHostRegistrar();
+
+        var app = new BridgeApplication(
+            new RecordingLauncher(),
+            registrar,
+            new ConfigLoader(configPath),
+            TextWriter.Null,
+            executablePath: @"C:\Dev\ImmichBridge.exe",
+            nativeHostRegistrar: nativeHostRegistrar);
+
+        var exitCode = app.Run(["--register-protocol"]);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal(@"C:\Dev\ImmichBridge.exe", registrar.RegisteredPath);
+        Assert.Equal(@"C:\Dev\ImmichBridge.exe", nativeHostRegistrar.RegisteredPath);
+        Assert.Equal(["bjonmmnackaemelhjpkkhgoeocgfekam"], nativeHostRegistrar.AdditionalExtensionIds!);
     }
 
     [Fact]
@@ -216,6 +247,10 @@ public sealed class BridgeApplicationTests
         {
             CopiedPath = localPath;
         }
+
+        public void ShowCopyNotice(string localPath)
+        {
+        }
     }
 
     private sealed class RecordingRegistrar : IProtocolRegistrar
@@ -258,6 +293,29 @@ public sealed class BridgeApplicationTests
         public void Unregister()
         {
             RegisteredPath = null;
+        }
+    }
+
+    private sealed class RecordingNativeHostRegistrar : INativeHostRegistrar
+    {
+        public string? RegisteredPath { get; private set; }
+
+        public IReadOnlyList<string>? AdditionalExtensionIds { get; private set; }
+
+        public void Register(string executablePath, IEnumerable<string> additionalExtensionIds)
+        {
+            RegisteredPath = executablePath;
+            AdditionalExtensionIds = additionalExtensionIds.ToList();
+        }
+
+        public void Unregister()
+        {
+            RegisteredPath = null;
+        }
+
+        public bool IsRegistered(string executablePath)
+        {
+            return string.Equals(RegisteredPath, executablePath, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

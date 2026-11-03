@@ -4,6 +4,13 @@ All notable changes to Immich Bridge are tracked here.
 
 ## Unreleased
 
+The browser add-ons now ask for the `nativeMessaging` permission, so Chrome and Edge ask you to accept it once after the update.
+
+- The browser add-ons talk to the companion app through native messaging. The options page shows whether the companion is installed, set up, and up to date.
+- Copy original confirms in the page, and errors such as an unmapped path or a missing file appear as a message in Immich instead of a Windows dialog.
+- The action menu hides actions the installed companion doesn't support and links to the update when the companion is older than the add-on.
+- Companion apps before 0.6 and the userscript keep working through the `immich-bridge://` link.
+- The companion app registers its native messaging host for Chrome, Edge, and Firefox when it installs, and removes it when it uninstalls. `--check` reports the registration.
 - Browser extension packages now contain only the files the extension loads, instead of also shipping store listing material such as the artwork source file, screenshots, and store badges. The Firefox package shrinks from 10.9 MB to under 40 KB.
 - Firefox store submissions sign the released package instead of the repository folder.
 - The companion app ZIP no longer includes the browser extension folder; the setup wizard's artwork has been built into the app since 0.5.0.

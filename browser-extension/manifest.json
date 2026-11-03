@@ -5,6 +5,7 @@
   "description": "Adds Immich Bridge local workstation actions to Immich asset detail pages.",
   "homepage_url": "https://github.com/Peaj/immich-bridge",
   "permissions": [
+    "nativeMessaging",
     "scripting",
     "storage"
   ],

@@ -13,6 +13,7 @@ public sealed class BridgeConfig
     public BridgeConfig Normalize()
     {
         Options ??= new BridgeOptions();
+        Options.AdditionalExtensionIds ??= [];
         Mappings ??= [];
         Apps = new Dictionary<string, AppDefinition>(Apps ?? [], StringComparer.OrdinalIgnoreCase);
         return this;
@@ -40,6 +41,17 @@ public sealed class BridgeOptions
     public bool VerifyLocalFileExists { get; set; } = true;
 
     public string? LogFile { get; set; }
+
+    // Extra Chromium extension IDs allowed to use native messaging, for unpacked test builds.
+    public List<string> AdditionalExtensionIds { get; set; } = [];
+}
+
+public sealed class ConfigNotFoundException : FileNotFoundException
+{
+    public ConfigNotFoundException(string message, string configPath)
+        : base(message, configPath)
+    {
+    }
 }
 
 public sealed class ConfigLoader
@@ -63,7 +75,7 @@ public sealed class ConfigLoader
     {
         if (!File.Exists(ConfigPath))
         {
-            throw new FileNotFoundException(
+            throw new ConfigNotFoundException(
                 $"Immich Bridge config was not found. Create {ConfigPath} from examples/config.example.json.",
                 ConfigPath);
         }
@@ -91,6 +103,14 @@ public sealed class ConfigLoader
             if (string.IsNullOrWhiteSpace(mapping.LocalPrefix))
             {
                 throw new InvalidOperationException($"Mapping '{mapping.RemotePrefix}' must define LocalPrefix.");
+            }
+        }
+
+        foreach (var extensionId in config.Options.AdditionalExtensionIds)
+        {
+            if (!NativeHostManifests.IsChromiumExtensionId(extensionId))
+            {
+                throw new InvalidOperationException($"'{extensionId}' in AdditionalExtensionIds is not a Chromium extension ID (32 letters a-p).");
             }
         }
 

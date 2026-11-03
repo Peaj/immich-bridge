@@ -40,7 +40,7 @@ Prefer mappings that point to external libraries or other user-managed media fol
 
 ## Companion App Commands
 
-Install the running build to `%LOCALAPPDATA%\Programs\ImmichBridge`, register the protocol handler for the installed copy, and add the Start menu shortcut and Settings > Apps entry:
+Install the running build to `%LOCALAPPDATA%\Programs\ImmichBridge`, register the protocol handler and native messaging host for the installed copy, and add the Start menu shortcut and Settings > Apps entry:
 
 ```powershell
 .\ImmichBridge.exe --install
@@ -52,13 +52,13 @@ Setup does the same when you finish it, and launching a downloaded copy without 
 .\ImmichBridge.exe --uninstall
 ```
 
-Register the protocol handler for the current build without installing it, which is handy while developing:
+Register the protocol handler and native messaging host for the current build without installing it, which is handy while developing:
 
 ```powershell
 dotnet run --project .\src\ImmichBridge -- --register-protocol
 ```
 
-`--check` reports a protocol registered this way as failing, because it points outside the install folder.
+`--check` reports both registrations as failing in that case, because they point outside the install folder.
 
 Run the setup wizard:
 
@@ -66,7 +66,7 @@ Run the setup wizard:
 dotnet run --project .\src\ImmichBridge -- --setup
 ```
 
-Check config, mappings, install location, protocol registration, and log path:
+Check config, mappings, install location, protocol and native messaging registration, and log path:
 
 ```powershell
 dotnet run --project .\src\ImmichBridge -- --check
@@ -110,9 +110,38 @@ immich-bridge://copy?path=%2Fmnt%2Fimmich-external%2Fphotos%2F2024%2Fimg.jpg
 
 ## Browser Integration
 
-On Immich asset detail pages, the browser integration injects an Immich Bridge icon into the asset toolbar, opens a small action menu, calls `GET /api/assets/{id}` with the current browser session, reads `originalPath`, and launches `immich-bridge://` URLs.
+On Immich asset detail pages, the browser integration injects an Immich Bridge icon into the asset toolbar, opens a small action menu, calls `GET /api/assets/{id}` with the current browser session, and reads `originalPath`. The browser extension then hands the action to the companion app through native messaging. The userscript, and the extension when the companion is older than 0.6 or not installed, launch `immich-bridge://` URLs instead.
 
 The default `Open with...` action uses Windows' native app picker, so it does not need app ids hardcoded in the browser extension or userscript.
+
+## Native Messaging
+
+The companion app registers itself as the native messaging host `de.peaj.immich_bridge` whenever it installs (`--install`, the setup wizard, or the install prompt) and for dev builds with `--register-protocol`. It writes two host manifests next to the exe and points these per-user registry keys at them:
+
+| Browser | Registry key (HKCU) | Manifest |
+|---|---|---|
+| Chrome | `Software\Google\Chrome\NativeMessagingHosts\de.peaj.immich_bridge` | `de.peaj.immich_bridge.chromium.json` |
+| Edge | `Software\Microsoft\Edge\NativeMessagingHosts\de.peaj.immich_bridge` | `de.peaj.immich_bridge.chromium.json` |
+| Firefox | `Software\Mozilla\NativeMessagingHosts\de.peaj.immich_bridge` | `de.peaj.immich_bridge.firefox.json` |
+
+Only the store builds may connect: the Chromium manifest lists the Chrome Web Store and Edge Add-ons extension IDs, and the Firefox manifest lists the add-on ID `immich-bridge@peaj.de`. Web pages and other extensions cannot reach the host.
+
+When a browser starts the exe (with a `chrome-extension://` origin, or with a manifest path and the Firefox add-on ID), it runs as the host: it reads length-prefixed JSON messages from stdin and answers on stdout, without a console or dialogs.
+
+- `{"type":"hello"}` answers with `ok`, the protocol version, the app `version`, the supported `actions`, and whether setup is `configured`. The extension uses it for the options page status, to hide actions the companion doesn't know, and to offer an update.
+- `{"type":"run","action":"reveal|copy|open","path":"<Immich path>"}` maps and checks the path exactly like a browser-link launch. It answers `{"ok":true}` or `{"ok":false,"code":...,"message":...}` with the code `unsupported-action`, `not-configured`, `not-mapped`, `file-missing`, or `failed`.
+
+Copy runs inside the host, and the page shows the confirmation. Reveal and Open with need windows that outlive the host, but browsers end the host's Windows job as soon as it answers. So the host starts a detached copy of the exe with the matching `immich-bridge://` URL, using `CREATE_BREAKAWAY_FROM_JOB`.
+
+Unpacked Chromium extensions get a different extension ID than the store build. To test one, add its ID to `config.json` and register again:
+
+```json
+"Options": {
+  "AdditionalExtensionIds": ["abcdefghijklmnopabcdefghijklmnop"]
+}
+```
+
+Rerunning the setup wizard writes a fresh config without this list. The Firefox add-on ID is fixed in `manifest.json`, so `web-ext run` works without extra configuration.
 
 ## Build and Test
 

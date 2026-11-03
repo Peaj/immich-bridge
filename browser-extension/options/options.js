@@ -8,6 +8,10 @@
   const status = document.getElementById('status');
   const openImmich = document.getElementById('open-immich');
   const removePermission = document.getElementById('remove-permission');
+  const companionSection = document.getElementById('companion');
+  const companionTitle = document.getElementById('companion-title');
+  const companionDetail = document.getElementById('companion-detail');
+  const companionDownload = document.getElementById('companion-download');
 
   function originToPattern(origin) {
     const url = new URL(origin);
@@ -91,7 +95,58 @@
     showStatus('Immich Bridge access was removed.', false);
   });
 
+  function compareVersions(left, right) {
+    const leftParts = String(left).split('.').map(Number);
+    const rightParts = String(right).split('.').map(Number);
+    for (let index = 0; index < Math.max(leftParts.length, rightParts.length); index++) {
+      const difference = (leftParts[index] || 0) - (rightParts[index] || 0);
+      if (difference !== 0) {
+        return difference;
+      }
+    }
+
+    return 0;
+  }
+
+  function showCompanionStatus(status) {
+    const extensionVersion = extensionApi.runtime.getManifest().version;
+    let title;
+    let detail;
+    let linkText = null;
+
+    if (!status || !status.connected) {
+      title = 'Desktop companion app not detected';
+      detail = 'Install Immich Bridge 0.6 or newer on this computer to enable Explorer, Copy original, and Open With actions from Immich. Older versions keep working through the immich-bridge:// link but cannot report results or updates.';
+      linkText = 'Download companion app';
+    } else if (compareVersions(status.version, extensionVersion) < 0) {
+      title = `Update available for Immich Bridge ${status.version}`;
+      detail = `This extension is version ${extensionVersion}. Update the desktop companion app to use all actions.`;
+      linkText = 'Download update';
+    } else if (!status.configured) {
+      title = `Immich Bridge ${status.version} needs setup`;
+      detail = 'Run Immich Bridge from the Start menu to set up the path mapping on this computer.';
+    } else {
+      title = `Connected to Immich Bridge ${status.version}`;
+      detail = 'The desktop companion app is installed and set up.';
+    }
+
+    companionSection.classList.toggle('connected', Boolean(status && status.connected && !linkText));
+    companionTitle.textContent = title;
+    companionDetail.textContent = detail;
+    companionDownload.hidden = !linkText;
+    if (linkText) {
+      companionDownload.textContent = linkText;
+    }
+  }
+
+  async function loadCompanionStatus() {
+    const status = await extensionApi.runtime.sendMessage({ type: 'immich-bridge:status', refresh: true });
+    showCompanionStatus(status);
+  }
+
   loadSettings().catch(error => {
     showStatus(error.message || String(error), true);
   });
+
+  loadCompanionStatus().catch(() => showCompanionStatus(null));
 })();

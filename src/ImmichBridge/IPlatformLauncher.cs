@@ -9,4 +9,6 @@ public interface IPlatformLauncher
     void OpenWithApp(string executablePath, string arguments, string localPath);
 
     void CopyToClipboard(string localPath);
+
+    void ShowCopyNotice(string localPath);
 }

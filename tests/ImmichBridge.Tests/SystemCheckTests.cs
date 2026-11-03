@@ -8,7 +8,7 @@ public sealed class SystemCheckTests
     public void Run_ReportsMissingConfig()
     {
         var path = Path.Combine(Path.GetTempPath(), "ImmichBridge.Tests", Guid.NewGuid().ToString("N"), "config.json");
-        var check = new SystemCheck(new ConfigLoader(path), new RecordingRegistrar(), CreateInstaller());
+        var check = new SystemCheck(new ConfigLoader(path), new RecordingRegistrar(), CreateInstaller(), new RecordingNativeHostRegistrar());
 
         var results = check.Run();
 
@@ -20,7 +20,7 @@ public sealed class SystemCheckTests
     {
         var configPath = WriteValidConfig();
 
-        var check = new SystemCheck(new ConfigLoader(configPath), new RecordingRegistrar(), CreateInstaller());
+        var check = new SystemCheck(new ConfigLoader(configPath), new RecordingRegistrar(), CreateInstaller(), new RecordingNativeHostRegistrar());
 
         var results = check.Run();
 
@@ -35,7 +35,7 @@ public sealed class SystemCheckTests
         var downloadedPath = Path.Combine(Path.GetDirectoryName(configPath)!, "ImmichBridge.exe");
         File.WriteAllText(downloadedPath, "exe");
 
-        var check = new SystemCheck(new ConfigLoader(configPath), new RecordingRegistrar { RegisteredPath = downloadedPath }, installer);
+        var check = new SystemCheck(new ConfigLoader(configPath), new RecordingRegistrar { RegisteredPath = downloadedPath }, installer, new RecordingNativeHostRegistrar());
 
         var results = check.Run();
 
@@ -48,12 +48,27 @@ public sealed class SystemCheckTests
         var configPath = WriteValidConfig();
         var installer = CreateInstaller(installed: true);
 
-        var check = new SystemCheck(new ConfigLoader(configPath), new RecordingRegistrar { RegisteredPath = installer.ExecutablePath }, installer);
+        var check = new SystemCheck(new ConfigLoader(configPath), new RecordingRegistrar { RegisteredPath = installer.ExecutablePath }, installer, new RecordingNativeHostRegistrar());
 
         var results = check.Run();
 
         Assert.Contains(results, result => result.Name == "Install" && result.Passed);
         Assert.Contains(results, result => result.Name == "Protocol" && result.Passed);
+    }
+
+    [Fact]
+    public void Run_ReportsNativeMessagingRegistration()
+    {
+        var configPath = WriteValidConfig();
+        var installer = CreateInstaller(installed: true);
+        var nativeHostRegistrar = new RecordingNativeHostRegistrar();
+
+        var missing = new SystemCheck(new ConfigLoader(configPath), new RecordingRegistrar(), installer, nativeHostRegistrar).Run();
+        nativeHostRegistrar.Register(installer.ExecutablePath, []);
+        var registered = new SystemCheck(new ConfigLoader(configPath), new RecordingRegistrar(), installer, nativeHostRegistrar).Run();
+
+        Assert.Contains(missing, result => result.Name == "Native messaging" && !result.Passed);
+        Assert.Contains(registered, result => result.Name == "Native messaging" && result.Passed);
     }
 
     [Fact]
@@ -71,7 +86,7 @@ public sealed class SystemCheckTests
             ]
         }));
 
-        var check = new SystemCheck(new ConfigLoader(configPath), new RecordingRegistrar(), CreateInstaller());
+        var check = new SystemCheck(new ConfigLoader(configPath), new RecordingRegistrar(), CreateInstaller(), new RecordingNativeHostRegistrar());
 
         var results = check.Run();
 
@@ -127,6 +142,26 @@ public sealed class SystemCheckTests
         public string? GetRegisteredExecutablePath()
         {
             return RegisteredPath;
+        }
+    }
+
+    private sealed class RecordingNativeHostRegistrar : INativeHostRegistrar
+    {
+        private string? registeredPath;
+
+        public void Register(string executablePath, IEnumerable<string> additionalExtensionIds)
+        {
+            registeredPath = executablePath;
+        }
+
+        public void Unregister()
+        {
+            registeredPath = null;
+        }
+
+        public bool IsRegistered(string executablePath)
+        {
+            return string.Equals(registeredPath, executablePath, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

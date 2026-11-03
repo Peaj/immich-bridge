@@ -5,12 +5,14 @@ public sealed class SystemCheck
     private readonly ConfigLoader configLoader;
     private readonly IProtocolRegistrar registrar;
     private readonly AppInstaller installer;
+    private readonly INativeHostRegistrar nativeHostRegistrar;
 
-    public SystemCheck(ConfigLoader configLoader, IProtocolRegistrar registrar, AppInstaller installer)
+    public SystemCheck(ConfigLoader configLoader, IProtocolRegistrar registrar, AppInstaller installer, INativeHostRegistrar nativeHostRegistrar)
     {
         this.configLoader = configLoader;
         this.registrar = registrar;
         this.installer = installer;
+        this.nativeHostRegistrar = nativeHostRegistrar;
     }
 
     public IReadOnlyList<CheckResult> Run()
@@ -54,6 +56,10 @@ public sealed class SystemCheck
             : CheckResult.Fail("Install", $"Not installed at {installer.ExecutablePath}. Run --install or --setup."));
 
         results.Add(CheckProtocol());
+
+        results.Add(nativeHostRegistrar.IsRegistered(installer.ExecutablePath)
+            ? CheckResult.Pass("Native messaging", $"Chrome, Edge, and Firefox can reach {installer.ExecutablePath}")
+            : CheckResult.Fail("Native messaging", "The browser extensions cannot reach the installed copy. Run --install or --setup."));
 
         var logPath = BridgePaths.ResolveLogFile(config?.Options ?? new BridgeOptions());
         var logDirectory = Path.GetDirectoryName(logPath);
