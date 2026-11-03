@@ -15,9 +15,11 @@ public interface IDetachedProcessStarter
 // one reply out, repeated until the browser closes stdin.
 public sealed class NativeMessagingHost
 {
-    public const int ProtocolVersion = 1;
+    public const int ProtocolVersion = 2;
     public static readonly string[] SupportedActions = ["reveal", "copy", "open"];
-    private const int MaxIncomingMessageBytes = 1024 * 1024;
+    public static readonly string[] SupportedFeatures = ["copies"];
+    // Copy chunks carry up to 1 MiB of file data as base64, so messages stay well below this.
+    private const int MaxIncomingMessageBytes = 4 * 1024 * 1024;
 
     private readonly ConfigService configService;
     private readonly LocalPathResolver resolver;
@@ -25,13 +27,16 @@ public sealed class NativeMessagingHost
     private readonly IDetachedProcessStarter processStarter;
     private readonly string executablePath;
     private readonly FileLogger logger;
+    private readonly CopyStore copyStore;
+    private CopyTransfer? transfer;
 
     public NativeMessagingHost(
         ConfigLoader configLoader,
         IPlatformLauncher launcher,
         IDetachedProcessStarter processStarter,
         string executablePath,
-        FileLogger? logger = null)
+        FileLogger? logger = null,
+        CopyStore? copyStore = null)
     {
         configService = new ConfigService(configLoader.ConfigPath);
         resolver = new LocalPathResolver(configLoader);
@@ -39,6 +44,7 @@ public sealed class NativeMessagingHost
         this.processStarter = processStarter;
         this.executablePath = executablePath;
         this.logger = logger ?? new FileLogger();
+        this.copyStore = copyStore ?? new CopyStore();
     }
 
     public static bool IsHostLaunch(string[] args)
@@ -58,9 +64,17 @@ public sealed class NativeMessagingHost
 
     public void Run(Stream input, Stream output)
     {
-        while (ReadMessage(input) is { } message)
+        try
         {
-            WriteMessage(output, Handle(message).ToJsonString());
+            while (ReadMessage(input) is { } message)
+            {
+                WriteMessage(output, Handle(message).ToJsonString());
+            }
+        }
+        finally
+        {
+            // The browser closed the connection mid-transfer: drop the partial copy.
+            AbortTransfer();
         }
     }
 
@@ -75,6 +89,9 @@ public sealed class NativeMessagingHost
             {
                 "hello" => Hello(),
                 "run" => RunAction(request),
+                "copy-start" => StartCopy(request),
+                "copy-chunk" => AppendCopy(request),
+                "copy-end" => FinishCopy(),
                 var type => Failure("unsupported-message", $"Unsupported message type '{type}'.")
             };
         }
@@ -83,7 +100,98 @@ public sealed class NativeMessagingHost
             logger.Error(ex);
             return Failure("invalid-message", ex.Message);
         }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            logger.Error(ex);
+            AbortTransfer();
+            return Failure("failed", ex.Message);
+        }
     }
+
+    private JsonObject StartCopy(JsonObject request)
+    {
+        AbortTransfer();
+
+        var purpose = request["purpose"]?.GetValue<string>();
+        if (purpose is not ("open" or "clipboard"))
+        {
+            return Failure("invalid-message", $"Unsupported copy purpose '{purpose}'.");
+        }
+
+        var path = copyStore.CreateCopyPath(request["fileName"]?.GetValue<string>());
+        var expectedSize = request["size"]?.GetValue<long>();
+        transfer = new CopyTransfer(purpose, path, expectedSize, new FileStream(path, FileMode.CreateNew, FileAccess.Write));
+        logger.Info($"Native copy started for '{Path.GetFileName(path)}' ({purpose}).");
+        return new JsonObject { ["ok"] = true };
+    }
+
+    private JsonObject AppendCopy(JsonObject request)
+    {
+        if (transfer is null)
+        {
+            return Failure("invalid-message", "No copy is in progress.");
+        }
+
+        var data = Convert.FromBase64String(request["data"]?.GetValue<string>() ?? string.Empty);
+        transfer.Stream.Write(data);
+        return new JsonObject { ["ok"] = true };
+    }
+
+    private JsonObject FinishCopy()
+    {
+        if (transfer is null)
+        {
+            return Failure("invalid-message", "No copy is in progress.");
+        }
+
+        var finished = transfer;
+        transfer = null;
+        var length = finished.Stream.Length;
+        finished.Stream.Dispose();
+
+        try
+        {
+            if (finished.ExpectedSize is { } expected && expected != length)
+            {
+                copyStore.Discard(finished.Path);
+                return Failure("failed", $"The copy is incomplete ({length} of {expected} bytes).");
+            }
+
+            CopyStore.MarkReadOnly(finished.Path);
+            if (finished.Purpose == "clipboard")
+            {
+                launcher.CopyToClipboard(finished.Path);
+            }
+            else
+            {
+                // Detached for the same reason as "open" in RunAction: the app picked in
+                // Open With has to outlive this host.
+                processStarter.Start(executablePath, $"--open-copy \"{finished.Path}\"");
+            }
+
+            logger.Info($"Native copy finished: '{finished.Path}' ({finished.Purpose}).");
+            return new JsonObject { ["ok"] = true, ["fileName"] = Path.GetFileName(finished.Path) };
+        }
+        catch (Exception ex)
+        {
+            logger.Error(ex);
+            return Failure("failed", ex.Message);
+        }
+    }
+
+    private void AbortTransfer()
+    {
+        if (transfer is null)
+        {
+            return;
+        }
+
+        transfer.Stream.Dispose();
+        copyStore.Discard(transfer.Path);
+        transfer = null;
+    }
+
+    private sealed record CopyTransfer(string Purpose, string Path, long? ExpectedSize, FileStream Stream);
 
     public static string? ReadMessage(Stream input)
     {
@@ -126,6 +234,7 @@ public sealed class NativeMessagingHost
             ["protocol"] = ProtocolVersion,
             ["version"] = Version,
             ["actions"] = new JsonArray(SupportedActions.Select(action => (JsonNode)action).ToArray()),
+            ["features"] = new JsonArray(SupportedFeatures.Select(feature => (JsonNode)feature).ToArray()),
             ["configured"] = !configService.NeedsSetup()
         };
     }

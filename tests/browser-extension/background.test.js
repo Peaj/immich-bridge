@@ -33,6 +33,39 @@ function createStorageArea(values) {
   };
 }
 
+function createPortEvent() {
+  const listeners = [];
+  return {
+    addListener(callback) {
+      listeners.push(callback);
+    },
+    dispatch(...args) {
+      listeners.forEach(listener => listener(...args));
+    }
+  };
+}
+
+// A runtime.Port double; `peer` receives what this side posts.
+function createPort(name, sender) {
+  const port = {
+    name,
+    sender,
+    posted: [],
+    disconnected: false,
+    onMessage: createPortEvent(),
+    onDisconnect: createPortEvent(),
+    postMessage(message) {
+      port.posted.push(message);
+    },
+    disconnect() {
+      if (!port.disconnected) {
+        port.disconnected = true;
+      }
+    }
+  };
+  return port;
+}
+
 function loadBackground(initialStorage = {}, nativeHost = async () => ({ ok: true })) {
   const storage = { ...initialStorage };
   const sessionStorage = {};
@@ -46,8 +79,10 @@ function loadBackground(initialStorage = {}, nativeHost = async () => ({ ok: tru
     startup: createEvent(),
     actionClicked: createEvent(),
     permissionRemoved: createEvent(),
-    message: createEvent()
+    message: createEvent(),
+    connect: createEvent()
   };
+  const nativePorts = [];
 
   const extensionApi = {
     action: { onClicked: events.actionClicked },
@@ -59,7 +94,13 @@ function loadBackground(initialStorage = {}, nativeHost = async () => ({ ok: tru
       id: 'extension-id',
       onInstalled: events.installed,
       onMessage: events.message,
+      onConnect: events.connect,
       onStartup: events.startup,
+      connectNative: hostName => {
+        const port = createPort(hostName);
+        nativePorts.push(port);
+        return port;
+      },
       openOptionsPage: async () => {
         optionsOpenCount++;
       },
@@ -101,6 +142,7 @@ function loadBackground(initialStorage = {}, nativeHost = async () => ({ ok: tru
     storage,
     sessionStorage,
     nativeMessages,
+    nativePorts,
     registrationErrors,
     getOptionsOpenCount: () => optionsOpenCount
   };
@@ -220,7 +262,64 @@ test('caches the companion status until a refresh is requested', async () => {
 
   // Objects from the vm context have a different prototype, so compare plain copies.
   const plain = value => JSON.parse(JSON.stringify(value));
-  assert.deepEqual(plain(first), { connected: true, version: '0.6.0', actions: ['reveal'], configured: true });
+  assert.deepEqual(plain(first), { connected: true, version: '0.6.0', actions: ['reveal'], features: [], configured: true });
   assert.deepEqual(plain(cached), plain(first));
   assert.equal(helloCount(), countAfterFirst + 1);
+});
+
+async function connectCopyPort(background, sender = immichTab) {
+  const port = createPort('immich-bridge:copy', sender);
+  background.events.connect.dispatch(port);
+  for (let attempt = 0; attempt < 20 && port.posted.length === 0; attempt++) {
+    await new Promise(resolve => setTimeout(resolve, 1));
+  }
+  return port;
+}
+
+test('relays copy messages between the page and the native host', async () => {
+  const background = loadBackground({ immichOrigin });
+
+  const page = await connectCopyPort(background);
+  assert.equal(page.posted[0].type, 'ready');
+  const native = background.nativePorts[0];
+  assert.equal(native.name, 'de.peaj.immich_bridge');
+
+  page.onMessage.dispatch({ type: 'copy-start', purpose: 'open', fileName: 'IMG.jpg', size: 3, extra: 'dropped' });
+  page.onMessage.dispatch({ type: 'run', action: 'reveal', path: '/x.jpg' });
+  native.onMessage.dispatch({ ok: true });
+
+  assert.equal(native.posted.length, 1);
+  assert.equal(native.posted[0].type, 'copy-start');
+  assert.equal(native.posted[0].fileName, 'IMG.jpg');
+  assert.equal(native.posted[0].extra, undefined);
+  assert.equal(page.posted[1].ok, true);
+});
+
+test('rejects copy ports from other sites without reaching the host', async () => {
+  const background = loadBackground({ immichOrigin });
+
+  const page = await connectCopyPort(background, { id: 'extension-id', tab: { id: 2 }, url: 'https://evil.example.com/' });
+
+  assert.equal(page.posted[0].code, 'forbidden');
+  assert.equal(page.disconnected, true);
+  assert.equal(background.nativePorts.length, 0);
+});
+
+test('reports a closed native connection to the page', async () => {
+  const background = loadBackground({ immichOrigin });
+
+  const page = await connectCopyPort(background);
+  background.nativePorts[0].onDisconnect.dispatch();
+
+  assert.equal(page.posted.at(-1).code, 'disconnected');
+  assert.equal(page.disconnected, true);
+});
+
+test('closes the native connection when the page goes away', async () => {
+  const background = loadBackground({ immichOrigin });
+
+  const page = await connectCopyPort(background);
+  page.onDisconnect.dispatch();
+
+  assert.equal(background.nativePorts[0].disconnected, true);
 });

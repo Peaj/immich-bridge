@@ -136,6 +136,35 @@ public sealed class BridgeApplicationTests
     }
 
     [Fact]
+    public void Run_OpenCopyOpensFilesInsideTheCopyStore()
+    {
+        var store = new CopyStore(Path.Combine(Path.GetTempPath(), "ImmichBridge.Tests", Guid.NewGuid().ToString("N"), "Copies"));
+        var copy = store.CreateCopyPath("IMG_1234.jpg");
+        File.WriteAllText(copy, "jpg");
+        var launcher = new RecordingLauncher();
+
+        var app = new BridgeApplication(launcher, new RecordingRegistrar(), new ConfigLoader(WriteConfig(new BridgeConfig())), TextWriter.Null, copyStore: store);
+
+        var exitCode = app.Run(["--open-copy", copy]);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal(copy, launcher.SystemOpenWithPath);
+    }
+
+    [Theory]
+    [InlineData(@"M:\Immich\library\img.jpg")]
+    [InlineData("")]
+    public void Run_OpenCopyRejectsPathsOutsideTheCopyStore(string path)
+    {
+        var store = new CopyStore(Path.Combine(Path.GetTempPath(), "ImmichBridge.Tests", Guid.NewGuid().ToString("N"), "Copies"));
+        var launcher = new RecordingLauncher();
+        var app = new BridgeApplication(launcher, new RecordingRegistrar(), new ConfigLoader(WriteConfig(new BridgeConfig())), TextWriter.Null, copyStore: store);
+
+        Assert.Throws<InvalidOperationException>(() => app.Run(["--open-copy", path]));
+        Assert.Null(launcher.SystemOpenWithPath);
+    }
+
+    [Fact]
     public void Run_RegisterProtocolAlsoRegistersNativeHostWithConfiguredExtraIds()
     {
         var configPath = WriteConfig(new BridgeConfig

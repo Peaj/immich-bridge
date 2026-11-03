@@ -42,7 +42,7 @@ public static class Program
         {
             logger.Error(ex);
 
-            if (LooksLikeProtocolLaunch(args))
+            if (LooksLikeProtocolLaunch(args) || IsOpenCopyLaunch(args))
             {
                 MessageBox.Show(ex.Message, "Immich Bridge", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
@@ -60,12 +60,16 @@ public static class Program
         var logger = new FileLogger();
         try
         {
+            var copyStore = new CopyStore();
+            copyStore.DeleteOlderThan(CopyStore.RetentionPeriod, DateTime.Now);
+
             var host = new NativeMessagingHost(
                 new ConfigLoader(),
                 new WindowsLauncher(),
                 new WindowsDetachedProcessStarter(),
                 Environment.ProcessPath ?? throw new InvalidOperationException("Unable to determine the Immich Bridge executable path."),
-                logger);
+                logger,
+                copyStore);
 
             using var input = Console.OpenStandardInput();
             using var output = Console.OpenStandardOutput();
@@ -95,6 +99,12 @@ public static class Program
                 UseShellExecute = true
             });
         }
+    }
+
+    // Started detached by the native host, so there is no console to report errors to.
+    private static bool IsOpenCopyLaunch(string[] args)
+    {
+        return args.Length > 0 && StringComparer.OrdinalIgnoreCase.Equals(args[0], BridgeApplication.OpenCopyCommand);
     }
 
     private static bool LooksLikeProtocolLaunch(string[] args)

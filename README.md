@@ -19,8 +19,10 @@ It consists of a browser add-on and a small Windows companion app. The add-on ad
 
 Immich Bridge is useful when Immich stores assets from folders that are also available on your Windows workstation, for example through a mapped drive, SMB share, external disk, or synced folder.
 
-> [!WARNING]
-> Immich Bridge is intended for external libraries or other folders you deliberately manage outside Immich. If you map Immich's internal upload/library storage, treat those files as read-only from desktop apps: do not overwrite, rename, move, or delete them outside Immich. Opening an internal-library asset to inspect it or to save a separate copy elsewhere should be fine, but editing the original file in place can conflict with Immich's storage management.
+> [!NOTE]
+> Path mappings are meant for external libraries and other folders you manage yourself. Photos in Immich's own upload library are never opened in place, because Immich asks that its storage is not touched. With the browser add-on and companion app 0.6 or newer, Copy original and Open with download those photos through Immich and hand you a read-only copy. Reveal in Explorer is not offered for them, and no path mapping is needed.
+>
+> Photos edited in Immich (crop, rotate, mirror) also offer **Open edited copy with...**, a read-only copy with Immich's edits applied. **Open with...** still opens the untouched original. Immich keeps applying its edits on top of the original, so don't save an edited copy back over it, or the edits would be applied twice.
 
 > [!NOTE]
 > AI assistance was used during development of this project. Code, design, and release decisions remain reviewed and maintained by the project author.

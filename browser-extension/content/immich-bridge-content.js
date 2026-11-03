@@ -78,12 +78,22 @@
     return asset;
   }
 
+  // Assets in Immich's upload library have no library id. Immich says their files must never
+  // be touched, so they are only handed out as read-only copies, never by path.
+  function isInternalAsset(asset) {
+    return Boolean(asset) && asset.libraryId == null;
+  }
+
   async function launch(action, appId) {
     const asset = await getCurrentAsset();
     const originalPath = asset && asset.originalPath;
 
     if (!originalPath) {
       throw new Error('Immich asset did not include originalPath.');
+    }
+
+    if (isInternalAsset(asset)) {
+      throw new Error('Photos in Immich\'s own library are only opened as read-only copies.');
     }
 
     if (!appId) {
@@ -144,17 +154,166 @@
     return 0;
   }
 
-  function availableMenuItems() {
-    if (!companionStatus || !companionStatus.connected) {
-      return actions;
+  function availableMenuItems(asset) {
+    const connected = Boolean(companionStatus && companionStatus.connected);
+    const supportsCopies = connected && (companionStatus.features || []).includes('copies');
+    const editedCopy = { label: 'Open edited copy with...', icon: 'app', copy: { purpose: 'open', edited: true } };
+    let items;
+
+    if (isInternalAsset(asset)) {
+      if (!supportsCopies) {
+        return [{ label: 'Update Immich Bridge to open this photo safely', url: latestReleaseUrl, icon: 'update', muted: true }];
+      }
+
+      items = [
+        { label: 'Copy original', icon: 'copy', copy: { purpose: 'clipboard', edited: false } },
+        { label: 'Open copy with...', icon: 'app', copy: { purpose: 'open', edited: false } }
+      ];
+    } else {
+      // Companion versions before 0.6 report nothing; every action then uses the browser link.
+      items = connected ? actions.filter(item => companionStatus.actions.includes(item.action)) : [...actions];
     }
 
-    const supported = actions.filter(item => companionStatus.actions.includes(item.action));
-    if (compareVersions(companionStatus.version, extensionVersion) < 0) {
-      supported.push({ label: 'Update Immich Bridge', url: latestReleaseUrl, icon: 'update', muted: true });
+    if (asset && asset.isEdited && supportsCopies) {
+      items.push(editedCopy);
     }
 
-    return supported;
+    if (connected && compareVersions(companionStatus.version, extensionVersion) < 0) {
+      items.push({ label: 'Update Immich Bridge', url: latestReleaseUrl, icon: 'update', muted: true });
+    }
+
+    return items;
+  }
+
+  const copyChunkBytes = 1024 * 1024;
+  const progressThresholdBytes = 20 * 1024 * 1024;
+  const editedExtensions = {
+    'image/jpeg': '.jpg',
+    'image/png': '.png',
+    'image/webp': '.webp',
+    'image/avif': '.avif',
+    'image/heic': '.heic'
+  };
+
+  function copyFileName(asset, edited, contentType) {
+    const original = asset.originalFileName || asset.originalPath.split('/').pop() || 'immich-asset';
+    if (!edited) {
+      return original;
+    }
+
+    const dot = original.lastIndexOf('.');
+    const stem = dot > 0 ? original.slice(0, dot) : original;
+    const extension = editedExtensions[(contentType || '').split(';')[0].trim()] || (dot > 0 ? original.slice(dot) : '');
+    return `${stem} (edited)${extension}`;
+  }
+
+  function toBase64(bytes) {
+    let binary = '';
+    for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(offset, offset + 0x8000));
+    }
+
+    return btoa(binary);
+  }
+
+  // Wraps the copy port so each message can be awaited as a request/reply pair.
+  function openCopyChannel() {
+    const port = extensionApi.runtime.connect({ name: 'immich-bridge:copy' });
+    const waiting = [];
+    let failure = null;
+
+    port.onMessage.addListener(message => {
+      const next = waiting.shift();
+      if (next) {
+        next.resolve(message);
+      }
+    });
+    port.onDisconnect.addListener(() => {
+      failure = new Error('The connection to the Immich Bridge desktop app was closed.');
+      waiting.splice(0).forEach(next => next.reject(failure));
+    });
+
+    function nextReply() {
+      if (failure) {
+        return Promise.reject(failure);
+      }
+
+      return new Promise((resolve, reject) => waiting.push({ resolve, reject })).then(reply => {
+        if (!reply || reply.ok === false) {
+          throw new Error((reply && reply.message) || 'Immich Bridge could not copy this photo.');
+        }
+
+        return reply;
+      });
+    }
+
+    return {
+      ready: nextReply(),
+      request(message) {
+        const reply = nextReply();
+        port.postMessage(message);
+        return reply;
+      },
+      close() {
+        port.disconnect();
+      }
+    };
+  }
+
+  async function copyAsset(asset, { purpose, edited }) {
+    const url = new URL(`${assetApiPrefix}${encodeURIComponent(asset.id)}/original`, window.location.href);
+    if (edited) {
+      url.searchParams.set('edited', 'true');
+    }
+
+    const response = await fetch(url, { credentials: 'same-origin' });
+    if (!response.ok || !response.body) {
+      throw new Error(`Immich returned ${response.status} for the download.`);
+    }
+
+    // A compressed response reports the compressed length, which would not match the file.
+    const size = response.headers.get('Content-Encoding') ? null : Number(response.headers.get('Content-Length')) || null;
+    const fileName = copyFileName(asset, edited, response.headers.get('Content-Type'));
+    const channel = openCopyChannel();
+
+    try {
+      await channel.ready;
+      await channel.request({ type: 'copy-start', purpose, fileName, size });
+
+      const reader = response.body.getReader();
+      let pending = new Uint8Array(0);
+      let sent = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (value) {
+          const combined = new Uint8Array(pending.length + value.length);
+          combined.set(pending);
+          combined.set(value, pending.length);
+          pending = combined;
+        }
+
+        while (pending.length >= copyChunkBytes || (done && pending.length > 0)) {
+          const chunk = pending.subarray(0, copyChunkBytes);
+          pending = pending.slice(chunk.length);
+          await channel.request({ type: 'copy-chunk', data: toBase64(chunk) });
+          sent += chunk.length;
+          if (size && size > progressThresholdBytes) {
+            showToast(`Preparing copy… ${Math.round(sent / size * 100)} %`);
+          }
+        }
+
+        if (done) {
+          break;
+        }
+      }
+
+      const result = await channel.request({ type: 'copy-end' });
+      showToast(purpose === 'clipboard'
+        ? `Copied ${result.fileName}`
+        : `Opening a read-only copy of ${result.fileName}`);
+    } finally {
+      channel.close();
+    }
   }
 
   function showToast(message, options = {}) {
@@ -249,7 +408,7 @@
     return button;
   }
 
-  function createMenuItem(item) {
+  function createMenuItem(item, asset) {
     const menuItem = document.createElement('button');
     menuItem.type = 'button';
     menuItem.setAttribute('role', 'menuitem');
@@ -284,7 +443,11 @@
       }
 
       try {
-        await launch(item.action, item.appId);
+        if (item.copy) {
+          await copyAsset(asset, item.copy);
+        } else {
+          await launch(item.action, item.appId);
+        }
       } catch (error) {
         showButtonError(error);
       }
@@ -292,7 +455,7 @@
     return menuItem;
   }
 
-  function createMenu(button) {
+  function createMenu(button, asset) {
     const menu = document.createElement('div');
     menu.id = menuId;
     menu.setAttribute('role', 'menu');
@@ -307,18 +470,31 @@
       'box-shadow:0 10px 24px rgba(0,0,0,.28)',
       'padding:4px 0'
     ].join(';');
-    availableMenuItems().forEach(item => menu.appendChild(createMenuItem(item)));
+    availableMenuItems(asset).forEach(item => menu.appendChild(createMenuItem(item, asset)));
     return menu;
   }
 
-  function toggleMenu(button) {
+  async function toggleMenu(button) {
     const existing = document.getElementById(menuId);
     if (existing) {
       closeMenu();
       return;
     }
 
-    const menu = createMenu(button);
+    // The entries depend on the asset (internal or external, edited) and on the companion.
+    let asset;
+    try {
+      [asset] = await Promise.all([getCurrentAsset(), companionStatus ? null : refreshCompanionStatus()]);
+    } catch (error) {
+      showButtonError(error);
+      return;
+    }
+
+    if (document.getElementById(menuId)) {
+      return;
+    }
+
+    const menu = createMenu(button, asset);
     document.body.appendChild(menu);
     positionMenu(button, menu);
     button.setAttribute('aria-expanded', 'true');
