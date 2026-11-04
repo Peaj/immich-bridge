@@ -5,6 +5,8 @@ namespace ImmichBridge;
 
 public sealed class BridgeApplication
 {
+    public const string OpenCopyCommand = "--open-copy";
+
     private readonly IPlatformLauncher launcher;
     private readonly IProtocolRegistrar registrar;
     private readonly ConfigLoader configLoader;
@@ -14,6 +16,7 @@ public sealed class BridgeApplication
     private readonly AppInstaller installer;
     private readonly IInstallRegistration installRegistration;
     private readonly INativeHostRegistrar nativeHostRegistrar;
+    private readonly CopyStore copyStore;
     private readonly string executablePath;
 
     public BridgeApplication(
@@ -25,9 +28,11 @@ public sealed class BridgeApplication
         AppInstaller? installer = null,
         IInstallRegistration? installRegistration = null,
         string? executablePath = null,
-        INativeHostRegistrar? nativeHostRegistrar = null)
+        INativeHostRegistrar? nativeHostRegistrar = null,
+        CopyStore? copyStore = null)
     {
         this.nativeHostRegistrar = nativeHostRegistrar ?? new WindowsNativeHostRegistrar();
+        this.copyStore = copyStore ?? new CopyStore();
         this.launcher = launcher;
         this.registrar = registrar;
         this.configLoader = configLoader;
@@ -145,6 +150,20 @@ public sealed class BridgeApplication
             logger.Info($"CLI copy requested for '{args[1]}' -> '{localPath}'.");
             launcher.CopyToClipboard(localPath);
             launcher.ShowCopyNotice(localPath);
+            return 0;
+        }
+
+        if (StringComparer.OrdinalIgnoreCase.Equals(command, OpenCopyCommand))
+        {
+            // Only for copies the native host downloaded; browser links never carry local paths.
+            if (args.Length < 2 || string.IsNullOrWhiteSpace(args[1]) || !copyStore.IsInsideCopies(args[1]) || !File.Exists(args[1]))
+            {
+                throw new InvalidOperationException($"{OpenCopyCommand} only opens copies that Immich Bridge downloaded.");
+            }
+
+            var copyPath = Path.GetFullPath(args[1]);
+            logger.Info($"Opening read-only copy '{copyPath}'.");
+            launcher.OpenWithSystemDialog(copyPath);
             return 0;
         }
 

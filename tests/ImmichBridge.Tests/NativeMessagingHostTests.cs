@@ -63,7 +63,98 @@ public sealed class NativeMessagingHostTests
         Assert.Equal(NativeMessagingHost.ProtocolVersion, reply["protocol"]!.GetValue<int>());
         Assert.Equal(NativeMessagingHost.Version, reply["version"]!.GetValue<string>());
         Assert.Equal(["reveal", "copy", "open"], reply["actions"]!.AsArray().Select(node => node!.GetValue<string>()));
+        Assert.Equal(["copies"], reply["features"]!.AsArray().Select(node => node!.GetValue<string>()));
         Assert.True(reply["configured"]!.GetValue<bool>());
+    }
+
+    [Theory]
+    [InlineData("clipboard")]
+    [InlineData("open")]
+    public void Copy_WritesExactBytesAsReadOnlyCopy(string purpose)
+    {
+        var fixture = new HostFixture();
+        var bytes = Enumerable.Range(0, 3_000_000).Select(index => (byte)(index % 251)).ToArray();
+
+        Assert.True(fixture.Host.Handle(CopyStart(purpose, "IMG_1234.jpg", bytes.Length))["ok"]!.GetValue<bool>());
+        foreach (var chunk in bytes.Chunk(1024 * 1024))
+        {
+            Assert.True(fixture.Host.Handle(CopyChunk(chunk))["ok"]!.GetValue<bool>());
+        }
+        var reply = fixture.Host.Handle("{\"type\":\"copy-end\"}");
+
+        Assert.True(reply["ok"]!.GetValue<bool>());
+        Assert.Equal("IMG_1234.jpg", reply["fileName"]!.GetValue<string>());
+        var copy = Assert.Single(Directory.GetFiles(fixture.CopyStore.Root, "*", SearchOption.AllDirectories));
+        Assert.Equal(bytes, File.ReadAllBytes(copy));
+        Assert.True(File.GetAttributes(copy).HasFlag(FileAttributes.ReadOnly));
+
+        if (purpose == "clipboard")
+        {
+            Assert.Equal(copy, fixture.Launcher.CopiedPath);
+            Assert.Null(fixture.Starter.Arguments);
+        }
+        else
+        {
+            Assert.Equal($"--open-copy \"{copy}\"", fixture.Starter.Arguments);
+            Assert.Null(fixture.Launcher.CopiedPath);
+        }
+    }
+
+    [Fact]
+    public void Copy_RejectsChunksWithoutStart()
+    {
+        var fixture = new HostFixture();
+
+        Assert.False(fixture.Host.Handle(CopyChunk([1, 2, 3]))["ok"]!.GetValue<bool>());
+        Assert.False(fixture.Host.Handle("{\"type\":\"copy-end\"}")["ok"]!.GetValue<bool>());
+    }
+
+    [Fact]
+    public void Copy_DiscardsIncompleteCopies()
+    {
+        var fixture = new HostFixture();
+
+        fixture.Host.Handle(CopyStart("open", "IMG.jpg", 10));
+        fixture.Host.Handle(CopyChunk([1, 2, 3]));
+        var reply = fixture.Host.Handle("{\"type\":\"copy-end\"}");
+
+        Assert.Equal("failed", reply["code"]!.GetValue<string>());
+        Assert.Null(fixture.Starter.Arguments);
+        Assert.Empty(Directory.GetFiles(fixture.CopyStore.Root, "*", SearchOption.AllDirectories));
+    }
+
+    [Fact]
+    public void Copy_DiscardsPartialCopyWhenTheBrowserDisconnects()
+    {
+        var fixture = new HostFixture();
+        using var input = new MemoryStream();
+        NativeMessagingHost.WriteMessage(input, CopyStart("open", "IMG.jpg", 10));
+        NativeMessagingHost.WriteMessage(input, CopyChunk([1, 2, 3]));
+        input.Position = 0;
+
+        fixture.Host.Run(input, new MemoryStream());
+
+        Assert.Empty(Directory.GetFiles(fixture.CopyStore.Root, "*", SearchOption.AllDirectories));
+    }
+
+    [Fact]
+    public void Copy_RejectsUnknownPurpose()
+    {
+        var fixture = new HostFixture();
+
+        var reply = fixture.Host.Handle(CopyStart("reveal", "IMG.jpg", 3));
+
+        Assert.False(reply["ok"]!.GetValue<bool>());
+    }
+
+    private static string CopyStart(string purpose, string fileName, long size)
+    {
+        return new JsonObject { ["type"] = "copy-start", ["purpose"] = purpose, ["fileName"] = fileName, ["size"] = size }.ToJsonString();
+    }
+
+    private static string CopyChunk(byte[] data)
+    {
+        return new JsonObject { ["type"] = "copy-chunk", ["data"] = Convert.ToBase64String(data) }.ToJsonString();
     }
 
     [Fact]
@@ -168,10 +259,14 @@ public sealed class NativeMessagingHostTests
                 }));
             }
 
-            Host = new NativeMessagingHost(new ConfigLoader(configPath), Launcher, Starter, ExecutablePath);
+            CopyStore = new CopyStore(Path.Combine(root, "Copies"));
+            Directory.CreateDirectory(CopyStore.Root);
+            Host = new NativeMessagingHost(new ConfigLoader(configPath), Launcher, Starter, ExecutablePath, copyStore: CopyStore);
         }
 
         public string LocalFile { get; }
+
+        public CopyStore CopyStore { get; }
 
         public RecordingLauncher Launcher { get; } = new();
 

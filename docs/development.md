@@ -34,9 +34,9 @@ The internal config file is stored at `%AppData%\ImmichBridge\config.json`:
 }
 ```
 
-The browser add-ons currently expose `Reveal in Explorer`, `Copy original`, and `Open with...`. Direct app ids are supported by the companion app protocol but are not exposed from the Immich browser UI at the moment.
+The browser add-ons expose `Reveal in Explorer`, `Copy original`, and `Open with...` for external libraries. Internal-library photos get `Copy original` and `Open copy with...`, both as read-only copies, and photos edited in Immich also get `Open edited copy with...`. Direct app ids are supported by the companion app protocol but are not exposed from the Immich browser UI at the moment.
 
-Prefer mappings that point to external libraries or other user-managed media folders. Avoid mapping Immich's internal upload/library storage unless you treat the mapped files as read-only from desktop apps.
+Mappings should point to external libraries or other user-managed media folders. The browser add-on never hands out Immich's internal upload-library files by path; it opens them as read-only copies (see [Read-only copies](#read-only-copies)). Only the userscript and companion apps before 0.6 would still open a mapped internal file directly.
 
 ## Companion App Commands
 
@@ -131,7 +131,21 @@ When a browser starts the exe (with a `chrome-extension://` origin, or with a ma
 - `{"type":"hello"}` answers with `ok`, the protocol version, the app `version`, the supported `actions`, and whether setup is `configured`. The extension uses it for the options page status, to hide actions the companion doesn't know, and to offer an update.
 - `{"type":"run","action":"reveal|copy|open","path":"<Immich path>"}` maps and checks the path exactly like a browser-link launch. It answers `{"ok":true}` or `{"ok":false,"code":...,"message":...}` with the code `unsupported-action`, `not-configured`, `not-mapped`, `file-missing`, or `failed`.
 
+- `{"type":"copy-start"|"copy-chunk"|"copy-end", ...}` receives a file download for a read-only copy; see below. `hello` lists `copies` in `features` when the companion supports this.
+
 Copy runs inside the host, and the page shows the confirmation. Reveal and Open with need windows that outlive the host, but browsers end the host's Windows job as soon as it answers. So the host starts a detached copy of the exe with the matching `immich-bridge://` URL, using `CREATE_BREAKAWAY_FROM_JOB`.
+
+### Read-only copies
+
+Internal-library assets (`libraryId` is `null`) and the **Open edited copy with...** entry use copies instead of paths:
+
+1. The content script downloads `GET /api/assets/{id}/original` with the page's Immich session. For edited copies it adds `?edited=true`, which returns Immich's crop/rotate/mirror applied.
+2. It streams the file over a `runtime.connect` port named `immich-bridge:copy` to the background script. The background script checks that the port comes from the configured Immich site and relays to a `connectNative` port.
+3. The messages are `copy-start` (`purpose` `open` or `clipboard`, `fileName`, optional `size`), then `copy-chunk` with up to 1 MiB of base64 data each, then `copy-end`. The page waits for every reply before sending the next message.
+4. The host writes the file to `%TEMP%\Immich Bridge\Copies\<timestamp-id>\<file name>` and marks it read-only. For `clipboard` it copies it to the clipboard. For `open` it starts `ImmichBridge.exe --open-copy "<copy>"` detached, which shows the Windows Open With dialog. `--open-copy` refuses any path outside the copies folder.
+5. Copies older than 7 days are deleted the next time a browser starts the host. Copies still open in an app are skipped.
+
+If the companion is older than 0.6 or doesn't report `copies`, internal assets only show an update hint. They never fall back to the `immich-bridge://` link, which would use the original path.
 
 Unpacked Chromium extensions get a different extension ID than the store build. To test one, add its ID to `config.json` and register again:
 

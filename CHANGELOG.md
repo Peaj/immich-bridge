@@ -6,6 +6,9 @@ All notable changes to Immich Bridge are tracked here.
 
 The browser add-ons now ask for the `nativeMessaging` permission, so Chrome and Edge ask you to accept it once after the update.
 
+- Photos in Immich's own upload library are no longer opened in place. Copy original and Open copy with download them through Immich and use a read-only copy, and Reveal in Explorer is not offered for them. No path mapping is needed for these photos.
+- Photos edited in Immich get **Open edited copy with...**, which opens a read-only copy with Immich's crop, rotation, and mirroring applied. **Open with...** still opens the original.
+- Read-only copies are kept in `%TEMP%\Immich Bridge\Copies` and deleted after 7 days.
 - The browser add-ons talk to the companion app through native messaging. The options page shows whether the companion is installed, set up, and up to date.
 - Copy original confirms in the page, and errors such as an unmapped path or a missing file appear as a message in Immich instead of a Windows dialog.
 - The action menu hides actions the installed companion doesn't support and links to the update when the companion is older than the add-on.

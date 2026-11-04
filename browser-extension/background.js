@@ -77,7 +77,13 @@
     try {
       const reply = await extensionApi.runtime.sendNativeMessage(nativeHostName, { type: 'hello' });
       status = reply && reply.ok
-        ? { connected: true, version: reply.version, actions: reply.actions || [], configured: Boolean(reply.configured) }
+        ? {
+          connected: true,
+          version: reply.version,
+          actions: reply.actions || [],
+          features: reply.features || [],
+          configured: Boolean(reply.configured)
+        }
         : { connected: false };
     } catch (error) {
       status = { connected: false };
@@ -127,6 +133,61 @@
   async function configureOrigin(message) {
     await registerContentScript(message.origin || null);
     return { ok: true };
+  }
+
+  const copyMessageTypes = ['copy-start', 'copy-chunk', 'copy-end'];
+
+  // Relays a file download from the Immich page to the companion app, one message at a time.
+  // The page waits for each reply before sending the next chunk, so nothing piles up here.
+  async function relayCopy(port) {
+    let closed = false;
+    const reply = message => {
+      if (!closed) {
+        port.postMessage(message);
+      }
+    };
+    port.onDisconnect.addListener(() => {
+      closed = true;
+    });
+
+    if (!await isFromConfiguredImmich(port.sender)) {
+      reply({ ok: false, code: 'forbidden', message: 'Immich Bridge only runs on the configured Immich site.' });
+      port.disconnect();
+      return;
+    }
+
+    let nativePort;
+    try {
+      nativePort = extensionApi.runtime.connectNative(nativeHostName);
+    } catch (error) {
+      reply({ ok: false, code: 'disconnected', message: 'The Immich Bridge desktop app is not available.' });
+      port.disconnect();
+      return;
+    }
+
+    nativePort.onMessage.addListener(reply);
+    nativePort.onDisconnect.addListener(() => {
+      reply({ ok: false, code: 'disconnected', message: 'The Immich Bridge desktop app closed the connection.' });
+      if (!closed) {
+        port.disconnect();
+      }
+    });
+    port.onDisconnect.addListener(() => nativePort.disconnect());
+    port.onMessage.addListener(message => {
+      if (!message || !copyMessageTypes.includes(message.type)) {
+        return;
+      }
+
+      nativePort.postMessage({
+        type: message.type,
+        purpose: message.purpose,
+        fileName: message.fileName,
+        size: message.size,
+        data: message.data
+      });
+    });
+
+    reply({ ok: true, type: 'ready' });
   }
 
   const messageHandlers = {
@@ -185,6 +246,17 @@
 
     response.then(sendResponse);
     return true;
+  });
+
+  extensionApi.runtime.onConnect.addListener(port => {
+    if (port.name !== 'immich-bridge:copy') {
+      return;
+    }
+
+    relayCopy(port).catch(error => {
+      console.error('[Immich Bridge] Unable to relay a copy.', error);
+      port.disconnect();
+    });
   });
 
   configureFromStorage();
