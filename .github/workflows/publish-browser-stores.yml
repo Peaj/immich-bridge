@@ -50,6 +50,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release download "${{ inputs.release_tag }}" --pattern "immich-bridge-firefox-${{ inputs.release_tag }}.zip" --dir artifacts/store-packages
+          mkdir -p artifacts/firefox-extension/source
           unzip -q "artifacts/store-packages/immich-bridge-firefox-${{ inputs.release_tag }}.zip" -d artifacts/firefox-extension/source
 
       - name: Submit to Mozilla Add-ons

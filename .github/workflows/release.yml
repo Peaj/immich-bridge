@@ -198,7 +198,9 @@ jobs:
       # Sign the released package rather than the repository folder, which also holds
       # store listing material that must not ship.
       - name: Unpack Firefox package
-        run: unzip -q "artifacts/store-packages/immich-bridge-firefox-${{ github.ref_name }}.zip" -d artifacts/firefox-extension/source
+        run: |
+          mkdir -p artifacts/firefox-extension/source
+          unzip -q "artifacts/store-packages/immich-bridge-firefox-${{ github.ref_name }}.zip" -d artifacts/firefox-extension/source
 
       - name: Submit to Mozilla Add-ons
         env:
