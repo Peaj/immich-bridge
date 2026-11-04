@@ -2,9 +2,9 @@
 
 All notable changes to Immich Bridge are tracked here.
 
-## Unreleased
+## 0.6.0
 
-The browser add-ons now ask for the `nativeMessaging` permission, so Chrome and Edge ask you to accept it once after the update.
+The browser add-ons now ask for the `nativeMessaging` permission, so Chrome and Edge ask you to accept it once after the update. Update the companion app to 0.6.0 as well: older versions keep working for mapped photos, but photos in Immich's upload library and edited copies need 0.6.0.
 
 - Photos in Immich's own upload library are no longer opened in place. Copy original and Open copy with download them through Immich and use a read-only copy, and Reveal in Explorer is not offered for them. No path mapping is needed for these photos.
 - Photos edited in Immich get **Open edited copy with...**, which opens a read-only copy with Immich's crop, rotation, and mirroring applied. **Open with...** still opens the original.
