@@ -143,6 +143,9 @@ public sealed class ConfigService
         ConfigPath = configPath ?? BridgePaths.ConfigFile;
     }
 
+    // Setup is needed until a valid config exists. A config without mappings is a finished
+    // setup: the mappings can be added later in the browser add-on, and photos in Immich's
+    // upload library don't need any.
     public bool NeedsSetup()
     {
         try
@@ -152,8 +155,8 @@ public sealed class ConfigService
                 return true;
             }
 
-            var config = new ConfigLoader(ConfigPath).Load();
-            return config.Mappings.Count == 0;
+            new ConfigLoader(ConfigPath).Load();
+            return false;
         }
         catch
         {
@@ -163,16 +166,19 @@ public sealed class ConfigService
 
     public BridgeConfig CreateDefaultConfig(string remotePrefix, string localPrefix)
     {
+        var config = CreateDefaultConfig();
+        config.Mappings.Add(new PathMapping
+        {
+            RemotePrefix = remotePrefix.Trim(),
+            LocalPrefix = localPrefix.Trim()
+        });
+        return config;
+    }
+
+    public BridgeConfig CreateDefaultConfig()
+    {
         return new BridgeConfig
         {
-            Mappings =
-            [
-                new PathMapping
-                {
-                    RemotePrefix = remotePrefix.Trim(),
-                    LocalPrefix = localPrefix.Trim()
-                }
-            ],
             Options = new BridgeOptions
             {
                 ConfirmBeforeOpeningApps = false,
@@ -180,6 +186,22 @@ public sealed class ConfigService
                 LogFile = "%AppData%\\ImmichBridge\\logs\\helper.log"
             }
         }.Normalize();
+    }
+
+    // The current config, or a default one when none exists yet. A config that exists but
+    // can't be read throws, so saving never replaces apps and options the user wrote by hand.
+    public BridgeConfig LoadOrCreate()
+    {
+        return File.Exists(ConfigPath) ? new ConfigLoader(ConfigPath).Load() : CreateDefaultConfig();
+    }
+
+    // Replaces only the mappings and keeps apps, options, and extra extension IDs.
+    public BridgeConfig SaveMappings(IEnumerable<PathMapping> mappings)
+    {
+        var config = LoadOrCreate();
+        config.Mappings = mappings.ToList();
+        Save(config);
+        return config;
     }
 
     public void Save(BridgeConfig config)

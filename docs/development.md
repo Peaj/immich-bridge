@@ -128,7 +128,7 @@ Only the store builds may connect: the Chromium manifest lists the Chrome Web St
 
 When a browser starts the exe (with a `chrome-extension://` origin, or with a manifest path and the Firefox add-on ID), it runs as the host: it reads length-prefixed JSON messages from stdin and answers on stdout, without a console or dialogs.
 
-- `{"type":"hello"}` answers with `ok`, the protocol version, the app `version`, the supported `actions`, and whether setup is `configured`. The extension uses it for the options page status, to hide actions the companion doesn't know, and to offer an update.
+- `{"type":"hello"}` answers with `ok`, the protocol version (3), the app `version`, the supported `actions` and `features`, and whether a config exists (`configured`). The extension uses it for the options page status, to hide actions the companion doesn't know, and to offer an update.
 - `{"type":"run","action":"reveal|copy|open","path":"<Immich path>"}` maps and checks the path exactly like a browser-link launch. It answers `{"ok":true}` or `{"ok":false,"code":...,"message":...}` with the code `unsupported-action`, `not-configured`, `not-mapped`, `file-missing`, or `failed`.
 
 - `{"type":"copy-start"|"copy-chunk"|"copy-end", ...}` receives a file download for a read-only copy; see below. `hello` lists `copies` in `features` when the companion supports this.
@@ -147,6 +147,19 @@ Internal-library assets (`libraryId` is `null`) and the **Open edited copy with.
 
 If the companion is older than 0.6 or doesn't report `copies`, internal assets only show an update hint. They never fall back to the `immich-bridge://` link, which would use the original path.
 
+### Folder setup in the browser
+
+When `hello` lists `mappings` in `features`, the options page shows and edits the path mappings. It sends these messages with `runtime.sendNativeMessage` itself. Only extension pages can use native messaging, and the background script relays nothing but `run` and the copy messages from Immich pages, so a web page can't read or change the mappings.
+
+- `{"type":"get-mappings"}` answers with `mappings` (`remotePrefix`, `localPrefix`, and whether the folder `exists`) and `configExists`.
+- `{"type":"suggest-mapping","path":"<Immich file path>"}` looks for the file on this computer. For `/external/photos/2024/IMG_1.jpg` it checks `photos\2024\IMG_1.jpg`, then `2024\IMG_1.jpg`, and so on, below every fixed, removable, and network drive root, their direct subfolders, and the Pictures and Videos folders. Longer matching tails rank first, and a drive that doesn't answer within 10 seconds is skipped. It answers up to five `suggestions` with `remotePrefix`, `localPrefix`, and the `localPath` it found.
+- `{"type":"check-mapping","path":"...","mappings":[...]}` maps a path with unsaved mappings and answers the `localPath` and whether the file `exists`, or the code `not-mapped`.
+- `{"type":"save-mappings","mappings":[...]}` replaces the mappings and keeps apps, options, and `AdditionalExtensionIds`. Immich prefixes must start with `/`, local folders must be full paths to existing folders, and each Immich prefix may appear once; otherwise it answers `invalid-mapping` and changes nothing. A config file that can't be read is never overwritten (`config-invalid`).
+
+When a `run` fails with `not-mapped`, `not-configured`, or `file-missing`, the toast in Immich offers **Set up folders**. It asks the background script (`immich-bridge:open-setup`, accepted only from the configured Immich site) to store the photo's path in session storage and open the options page, which fills it in and searches right away. Saving still needs a click.
+
+A config without mappings is a finished setup: the wizard's **Set up folders later in the browser add-on** option writes one, and `--check` passes without mappings. Rerunning the wizard keeps the other mappings, apps, and options, and replaces only a mapping with the same Immich prefix.
+
 Unpacked Chromium extensions get a different extension ID than the store build. To test one, add its ID to `config.json` and register again:
 
 ```json
@@ -155,7 +168,7 @@ Unpacked Chromium extensions get a different extension ID than the store build. 
 }
 ```
 
-Rerunning the setup wizard writes a fresh config without this list. The Firefox add-on ID is fixed in `manifest.json`, so `web-ext run` works without extra configuration.
+Rerunning the setup wizard keeps this list. The Firefox add-on ID is fixed in `manifest.json`, so `web-ext run` works without extra configuration.
 
 ## Build and Test
 
@@ -185,3 +198,5 @@ Immich Bridge uses semantic versioning and GitHub Releases. Release tags use `vX
 ## Security Model
 
 Immich Bridge never accepts executable paths or shell arguments from the URL. URLs can only name an action, an optional configured app id, and an Immich path. Paths must match a configured mapping, and the mapped local file must exist by default before anything is launched.
+
+Mappings can be changed from the add-on's options page, never from a web page: Immich pages can only reach `run` and the copy messages through the background script. Apps (executables and arguments) can't be set from the browser at all and stay in `config.json`.

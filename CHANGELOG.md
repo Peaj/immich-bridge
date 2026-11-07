@@ -2,6 +2,13 @@
 
 All notable changes to Immich Bridge are tracked here.
 
+## Unreleased
+
+- The browser add-on's options page now shows and edits the folder mappings. Paste one Immich file path and Immich Bridge finds the matching folder on your drives and mapped network drives, or add and test folders yourself. The mappings are still stored only by the companion app.
+- When Reveal, Copy original, or Open with fails because a photo has no folder yet, the message in Immich offers **Set up folders**, which opens the options page with that photo's path and searches right away.
+- The setup wizard can skip the mapping step ("Set up folders later in the browser add-on"). That suits add-on users and libraries that only use Immich's upload library, which needs no mapping. `--check` no longer fails without mappings.
+- Rerunning the setup wizard keeps your other mappings, apps, options, and `AdditionalExtensionIds` instead of writing a fresh config, and asks before replacing a config it can't read.
+
 ## 0.6.0
 
 The browser add-ons now ask for the `nativeMessaging` permission, so Chrome and Edge ask you to accept it once after the update. Update the companion app to 0.6.0 as well: older versions keep working for mapped photos, but photos in Immich's upload library and edited copies need 0.6.0.

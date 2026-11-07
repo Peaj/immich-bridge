@@ -130,6 +130,25 @@
     }
   }
 
+  const setupSamplePathKey = 'setupSamplePath';
+  const maxSamplePathLength = 2048;
+
+  // Opens the options page from an error in Immich, with the photo's path ready for finding
+  // its folder. The page only gets to prefill that one field; saving still takes a click.
+  async function openSetup(message, sender) {
+    if (!await isFromConfiguredImmich(sender)) {
+      return { ok: false, code: 'forbidden', message: 'Immich Bridge only runs on the configured Immich site.' };
+    }
+
+    const path = String(message.path || '').slice(0, maxSamplePathLength);
+    if (path.startsWith('/')) {
+      await extensionApi.storage.session.set({ [setupSamplePathKey]: path });
+    }
+
+    await extensionApi.runtime.openOptionsPage();
+    return { ok: true };
+  }
+
   async function configureOrigin(message) {
     await registerContentScript(message.origin || null);
     return { ok: true };
@@ -193,6 +212,7 @@
   const messageHandlers = {
     'immich-bridge:configure-origin': message => configureOrigin(message),
     'immich-bridge:run': (message, sender) => runAction(message, sender),
+    'immich-bridge:open-setup': (message, sender) => openSetup(message, sender),
     'immich-bridge:status': message => getCompanionStatus(Boolean(message.refresh))
   };
 

@@ -39,6 +39,8 @@ On first launch, Immich Bridge opens a setup wizard that:
 - installs itself to `%LOCALAPPDATA%\Programs\ImmichBridge` and sets up the local browser-to-app launcher there;
 - points you to the browser add-ons, with the Tampermonkey userscript as a fallback.
 
+With the browser add-on you can skip the mapping step and set up folders in the add-on's options page instead. There you paste one Immich file path and Immich Bridge finds the matching folder on your drives and mapped network drives. When an action in Immich fails because a photo has no folder yet, the message offers **Set up folders**, which opens that page with the photo's path filled in.
+
 After setup you can delete the downloaded file. No admin rights are required.
 
 To update, download the new release and run it; it offers to update the installed copy and keeps your settings. Rerun setup from the **Immich Bridge** Start menu entry, and uninstall it from **Settings > Apps**.
@@ -53,7 +55,7 @@ Click your browser to install the add-on:
   <a href="https://addons.mozilla.org/en-US/firefox/addon/immich-bridge/"><img alt="Get the add-on for Firefox" src="browser-extension/store-badges/firefox-add-ons.png" height="48"></a>
 </p>
 
-After installing, open the Immich Bridge extension options page, enter your Immich base URL, and grant access for that site. The extension stores only that local browser setting and injects the toolbar button only on the configured Immich origin.
+After installing, open the Immich Bridge extension options page, enter your Immich base URL, and grant access for that site. The extension stores only that local browser setting and injects the toolbar button only on the configured Immich origin. With companion app 0.7 or newer, the same page shows and edits the folder mappings; they are stored by the companion app, not in the browser.
 
 For unsupported browsers, store-review delays, or users who prefer Tampermonkey, install `userscript/immich-bridge.user.js` in Tampermonkey. You can use the copy bundled in the release ZIP, the `.user.js` release asset, or the latest script directly from GitHub:
 
@@ -69,4 +71,4 @@ https://raw.githubusercontent.com/Peaj/immich-bridge/main/userscript/immich-brid
 
 ## Security
 
-Immich Bridge never accepts executable paths or shell arguments from the browser. It only receives an action and an Immich asset path, maps that path through your local configuration, and requires the mapped local file to exist before launching anything.
+Immich Bridge never accepts executable paths or shell arguments from the browser. It only receives an action and an Immich asset path, maps that path through your local configuration, and requires the mapped local file to exist before launching anything. Folder mappings can be edited from the add-on's own options page, but never from a web page, including Immich itself.

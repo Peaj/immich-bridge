@@ -63,7 +63,7 @@ public sealed class NativeMessagingHostTests
         Assert.Equal(NativeMessagingHost.ProtocolVersion, reply["protocol"]!.GetValue<int>());
         Assert.Equal(NativeMessagingHost.Version, reply["version"]!.GetValue<string>());
         Assert.Equal(["reveal", "copy", "open"], reply["actions"]!.AsArray().Select(node => node!.GetValue<string>()));
-        Assert.Equal(["copies"], reply["features"]!.AsArray().Select(node => node!.GetValue<string>()));
+        Assert.Equal(["copies", "mappings"], reply["features"]!.AsArray().Select(node => node!.GetValue<string>()));
         Assert.True(reply["configured"]!.GetValue<bool>());
     }
 
@@ -242,15 +242,18 @@ public sealed class NativeMessagingHostTests
 
     private sealed class HostFixture
     {
-        public HostFixture(bool writeConfig = true)
+        public HostFixture(bool writeConfig = true, ISearchLocations? searchLocations = null)
         {
             var root = Path.Combine(Path.GetTempPath(), "ImmichBridge.Tests", Guid.NewGuid().ToString("N"));
+            Root = root;
             var photos = Path.Combine(root, "Photos");
+            PhotosFolder = photos;
             Directory.CreateDirectory(photos);
             LocalFile = Path.Combine(photos, "img.jpg");
             File.WriteAllText(LocalFile, "jpg");
 
             var configPath = Path.Combine(root, "config.json");
+            ConfigPath = configPath;
             if (writeConfig)
             {
                 File.WriteAllText(configPath, JsonSerializer.Serialize(new BridgeConfig
@@ -261,8 +264,20 @@ public sealed class NativeMessagingHostTests
 
             CopyStore = new CopyStore(Path.Combine(root, "Copies"));
             Directory.CreateDirectory(CopyStore.Root);
-            Host = new NativeMessagingHost(new ConfigLoader(configPath), Launcher, Starter, ExecutablePath, copyStore: CopyStore);
+            Host = new NativeMessagingHost(
+                new ConfigLoader(configPath),
+                Launcher,
+                Starter,
+                ExecutablePath,
+                copyStore: CopyStore,
+                suggester: new MappingSuggester(searchLocations ?? new NoSearchLocations()));
         }
+
+        public string Root { get; }
+
+        public string PhotosFolder { get; }
+
+        public string ConfigPath { get; }
 
         public string LocalFile { get; }
 
@@ -273,6 +288,153 @@ public sealed class NativeMessagingHostTests
         public RecordingStarter Starter { get; } = new();
 
         public NativeMessagingHost Host { get; }
+    }
+
+    private sealed class NoSearchLocations : ISearchLocations
+    {
+        public IEnumerable<string> GetRoots() => [];
+
+        public IEnumerable<string> GetSubfolders(string root) => [];
+
+        public bool FileExists(string path) => false;
+    }
+
+    private sealed class RootSearchLocations(string root) : ISearchLocations
+    {
+        public IEnumerable<string> GetRoots() => [root];
+
+        public IEnumerable<string> GetSubfolders(string folder) => Directory.EnumerateDirectories(folder);
+
+        public bool FileExists(string path) => File.Exists(path);
+    }
+
+    [Fact]
+    public void GetMappings_ListsMappingsWithFolderState()
+    {
+        var fixture = new HostFixture();
+
+        var reply = fixture.Host.Handle(Message("get-mappings"));
+
+        Assert.True(reply["ok"]!.GetValue<bool>());
+        Assert.True(reply["configExists"]!.GetValue<bool>());
+        var mapping = Assert.Single(reply["mappings"]!.AsArray())!;
+        Assert.Equal("/mnt/photos", mapping["remotePrefix"]!.GetValue<string>());
+        Assert.Equal(fixture.PhotosFolder, mapping["localPrefix"]!.GetValue<string>());
+        Assert.True(mapping["exists"]!.GetValue<bool>());
+    }
+
+    [Fact]
+    public void GetMappings_ReportsAMissingConfigAsEmpty()
+    {
+        var fixture = new HostFixture(writeConfig: false);
+
+        var reply = fixture.Host.Handle(Message("get-mappings"));
+
+        Assert.True(reply["ok"]!.GetValue<bool>());
+        Assert.False(reply["configExists"]!.GetValue<bool>());
+        Assert.Empty(reply["mappings"]!.AsArray());
+    }
+
+    [Fact]
+    public void SaveMappings_WritesValidatedMappingsAndCreatesTheConfig()
+    {
+        var fixture = new HostFixture(writeConfig: false);
+
+        var reply = fixture.Host.Handle(MappingsMessage("save-mappings", null, ("/external/photos/", fixture.PhotosFolder)));
+
+        Assert.True(reply["ok"]!.GetValue<bool>());
+        var saved = Assert.Single(new ConfigLoader(fixture.ConfigPath).Load().Mappings);
+        Assert.Equal("/external/photos", saved.RemotePrefix);
+        Assert.Equal(fixture.PhotosFolder, saved.LocalPrefix);
+        Assert.Equal("/external/photos", Assert.Single(reply["mappings"]!.AsArray())!["remotePrefix"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void SaveMappings_RejectsMissingFoldersWithoutTouchingTheConfig()
+    {
+        var fixture = new HostFixture();
+        var before = File.ReadAllText(fixture.ConfigPath);
+
+        var reply = fixture.Host.Handle(MappingsMessage("save-mappings", null, ("/external/photos", Path.Combine(fixture.Root, "missing"))));
+
+        Assert.False(reply["ok"]!.GetValue<bool>());
+        Assert.Equal("invalid-mapping", reply["code"]!.GetValue<string>());
+        Assert.Equal(before, File.ReadAllText(fixture.ConfigPath));
+    }
+
+    [Fact]
+    public void SaveMappings_LeavesAnUnreadableConfigUnchanged()
+    {
+        var fixture = new HostFixture();
+        File.WriteAllText(fixture.ConfigPath, "{ broken");
+
+        var reply = fixture.Host.Handle(MappingsMessage("save-mappings", null, ("/external/photos", fixture.PhotosFolder)));
+
+        Assert.Equal("config-invalid", reply["code"]!.GetValue<string>());
+        Assert.Equal("{ broken", File.ReadAllText(fixture.ConfigPath));
+    }
+
+    [Fact]
+    public void CheckMapping_MapsASamplePathWithUnsavedMappings()
+    {
+        var fixture = new HostFixture(writeConfig: false);
+
+        var found = fixture.Host.Handle(MappingsMessage("check-mapping", "/library/img.jpg", ("/library", fixture.PhotosFolder)));
+        var missing = fixture.Host.Handle(MappingsMessage("check-mapping", "/library/other.jpg", ("/library", fixture.PhotosFolder)));
+        var unmapped = fixture.Host.Handle(MappingsMessage("check-mapping", "/elsewhere/img.jpg", ("/library", fixture.PhotosFolder)));
+
+        Assert.Equal(fixture.LocalFile, found["localPath"]!.GetValue<string>());
+        Assert.True(found["exists"]!.GetValue<bool>());
+        Assert.False(missing["exists"]!.GetValue<bool>());
+        Assert.Equal("not-mapped", unmapped["code"]!.GetValue<string>());
+        Assert.False(File.Exists(fixture.ConfigPath));
+    }
+
+    [Fact]
+    public void SuggestMapping_FindsTheLocalFolderForAnImmichPath()
+    {
+        var drive = Path.Combine(Path.GetTempPath(), "ImmichBridge.Tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(drive, "Share", "2024"));
+        File.WriteAllText(Path.Combine(drive, "Share", "2024", "IMG_1.jpg"), "jpg");
+        var fixture = new HostFixture(searchLocations: new RootSearchLocations(drive));
+
+        var reply = fixture.Host.Handle(new JsonObject { ["type"] = "suggest-mapping", ["path"] = "/external/photos/2024/IMG_1.jpg" }.ToJsonString());
+
+        var suggestion = Assert.Single(reply["suggestions"]!.AsArray())!;
+        Assert.Equal("/external/photos", suggestion["remotePrefix"]!.GetValue<string>());
+        Assert.Equal(Path.Combine(drive, "Share"), suggestion["localPrefix"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void SuggestMapping_RejectsPathsWithoutAFolder()
+    {
+        var fixture = new HostFixture();
+
+        var reply = fixture.Host.Handle(new JsonObject { ["type"] = "suggest-mapping", ["path"] = "IMG_1.jpg" }.ToJsonString());
+
+        Assert.Equal("invalid-path", reply["code"]!.GetValue<string>());
+    }
+
+    private static string Message(string type)
+    {
+        return new JsonObject { ["type"] = type }.ToJsonString();
+    }
+
+    private static string MappingsMessage(string type, string? path, params (string Remote, string Local)[] mappings)
+    {
+        var message = new JsonObject
+        {
+            ["type"] = type,
+            ["mappings"] = new JsonArray(mappings
+                .Select(mapping => (JsonNode)new JsonObject { ["remotePrefix"] = mapping.Remote, ["localPrefix"] = mapping.Local })
+                .ToArray())
+        };
+        if (path is not null)
+        {
+            message["path"] = path;
+        }
+
+        return message.ToJsonString();
     }
 
     private sealed class RecordingStarter : IDetachedProcessStarter
