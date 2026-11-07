@@ -8,6 +8,8 @@ When the user clicks an Immich Bridge action, the extension reads the selected I
 
 For photos stored in Immich's own upload library, and for copies with Immich's edits applied, the extension downloads the photo from the user's configured Immich server using the user's existing Immich session. It passes the file only to the local companion app, which saves it as a read-only copy in the user's temporary folder and deletes it after 7 days.
 
+The extension's options page can show and change the folder mappings in that local configuration. It sends them, and an Immich file path the user enters or chooses to set up, only to the local companion app, which can search the user's drives for the matching file. The mappings are stored only by the companion app.
+
 The desktop companion app maps the received Immich path to a local Windows path according to the user's local configuration. It can then reveal the mapped file in Windows Explorer or open it with a local desktop application.
 
 Immich Bridge does not send page content, asset paths, telemetry, analytics, browsing history, credentials, or personal information to remote servers.

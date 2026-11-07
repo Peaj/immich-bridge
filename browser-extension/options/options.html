@@ -40,7 +40,36 @@
         <a id="companion-download" class="link-button" href="https://github.com/Peaj/immich-bridge/releases/latest" target="_blank" rel="noreferrer">Download companion app</a>
       </section>
 
-      <p class="privacy-note">When you click an Immich Bridge action, the extension passes only the selected asset path to the local companion app, through native messaging or the immich-bridge:// protocol. It does not send page content, asset paths, or telemetry to remote servers.</p>
+      <section id="folders" class="folders" aria-labelledby="folders-title" hidden>
+        <h2 id="folders-title">Folders on this computer</h2>
+        <p class="section-intro">Reveal in Explorer, Copy original, and Open with find photos from Immich's external libraries through these folder mappings. Photos in Immich's own upload library don't need one; they open as read-only copies.</p>
+
+        <div class="finder">
+          <label for="sample-path">Immich file path</label>
+          <p class="hint">Open a photo from your external library in Immich, open its info panel, expand Details, click Show file location, and copy the full file path. Immich Bridge then looks for the same file on this computer.</p>
+          <div class="field-row">
+            <input id="sample-path" type="text" placeholder="/external/photos/2024/IMG_1234.jpg" spellcheck="false" autocomplete="off">
+            <button id="find-folder" type="button">Find on this computer</button>
+          </div>
+          <ul id="suggestions" class="suggestions" hidden></ul>
+        </div>
+
+        <div class="mapping-header" aria-hidden="true">
+          <span>Immich path</span>
+          <span>Folder on this computer</span>
+        </div>
+        <div id="mapping-list" class="mapping-list"></div>
+        <p id="mapping-empty" class="hint" hidden>No folders yet. Find one from an Immich file path above, or add it yourself.</p>
+
+        <div class="actions">
+          <button id="add-mapping" type="button" class="secondary">Add folder</button>
+          <button id="test-mapping" type="button" class="secondary">Test with file path</button>
+          <button id="save-mappings" type="button">Save folders</button>
+        </div>
+        <p id="folders-status" class="status" role="status" aria-live="polite"></p>
+      </section>
+
+      <p class="privacy-note">When you click an Immich Bridge action, the extension passes only the selected asset path to the local companion app, through native messaging or the immich-bridge:// protocol. Folder mappings set up on this page are stored only by the local companion app. Nothing is sent to remote servers, and there is no telemetry.</p>
       <p class="disclaimer">Immich Bridge is an unofficial integration for Immich and is not affiliated with or endorsed by the Immich project.</p>
     </section>
   </main>

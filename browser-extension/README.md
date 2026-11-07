@@ -10,6 +10,8 @@ This add-on requires the Immich Bridge desktop companion app for local file acti
 
 The add-on talks to companion app 0.6 or newer through native messaging (`nativeMessaging` permission). That lets it show whether the companion is installed and up to date, and report results and errors in the page. Older companion versions keep working through the `immich-bridge://` protocol.
 
+With companion app 0.7 or newer, the options page also shows and edits the folder mappings and can find a library's folder from one Immich file path. The mappings stay in the companion app's local config; only the options page can change them, never a web page.
+
 Install the latest desktop companion app from the [Immich Bridge latest release](https://github.com/Peaj/immich-bridge/releases/latest).
 
 The extension only runs on the Immich URL you configure. When you click an Immich Bridge action, it reads the selected Immich asset's original path and sends only that path to the locally installed companion app. It does not send page content, asset paths, telemetry, or any other data to remote servers.

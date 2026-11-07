@@ -30,6 +30,8 @@ public sealed class SetupWizardForm : Form
     private readonly Label protocolLabel = new();
     private readonly Label installedLabel = new();
     private readonly Button testRevealButton = new();
+    private readonly CheckBox skipMappingBox = new();
+    private readonly List<Control> mappingControls = [];
     private string? validatedLocalSamplePath;
     private int pageIndex;
 
@@ -89,7 +91,7 @@ public sealed class SetupWizardForm : Form
         introLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         var body = CreateBodyLabel(
-            "Immich Bridge connects your Immich web app to files on this Windows computer.\n\nAfter setup, Immich gets a small toolbar button for local actions like revealing the original file in Explorer or opening it with a desktop app. The setup only needs to know how Immich's server paths map to your Windows folders.");
+            "Immich Bridge connects your Immich web app to files on this Windows computer.\n\nAfter setup, Immich gets a small toolbar button for local actions like revealing the original file in Explorer or opening it with a desktop app. For external libraries, Immich Bridge needs to know how Immich's server paths map to your Windows folders. You can set that up here or later in the browser add-on.");
         body.MaximumSize = new Size(300, 0);
         body.Dock = DockStyle.Fill;
         introLayout.Controls.Add(body, 0, 0);
@@ -133,6 +135,15 @@ public sealed class SetupWizardForm : Form
         testRevealButton.Enabled = false;
         testRevealButton.Click += (_, _) => TestReveal();
 
+        skipMappingBox.Text = "Set up folders later in the browser add-on";
+        skipMappingBox.AutoSize = true;
+        skipMappingBox.Padding = new Padding(0, 14, 0, 0);
+        skipMappingBox.CheckedChanged += (_, _) => UpdateMappingControls();
+        var skipHint = CreateBodyLabel(
+            "Choose this if you'll use the add-on's options page, which can find the folder for you, or if all your photos are in Immich's own upload library. Those photos open as read-only copies and need no mapping.");
+        skipHint.ForeColor = SystemColors.GrayText;
+        mappingControls.AddRange([samplePathBox, chooseFileButton, chooseFolderButton]);
+
         var layout = new TableLayoutPanel
         {
             Dock = DockStyle.Top,
@@ -169,7 +180,20 @@ public sealed class SetupWizardForm : Form
 
         content.Controls.Add(body);
         content.Controls.Add(layout);
+        content.Controls.Add(skipMappingBox);
+        content.Controls.Add(skipHint);
         return CreatePage(content);
+    }
+
+    private void UpdateMappingControls()
+    {
+        foreach (var control in mappingControls)
+        {
+            control.Enabled = !skipMappingBox.Checked;
+        }
+
+        testRevealButton.Enabled = !skipMappingBox.Checked && validatedLocalSamplePath is not null;
+        validationLabel.Visible = !skipMappingBox.Checked;
     }
 
     private void ChooseMatchingLocalFile()
@@ -246,7 +270,7 @@ public sealed class SetupWizardForm : Form
         installedLabel.MaximumSize = new Size(640, 0);
         installedLabel.Padding = new Padding(0, 0, 0, 12);
         var body = CreateBodyLabel(
-            "Immich Bridge is configured. The last step is adding the browser integration to Immich.\n\n1. Install the add-on for your browser.\n2. Enter your Immich URL in the add-on options page and approve access for that site.\n3. Refresh Immich and open an asset. The Immich Bridge button appears in the asset toolbar.\n\nIf your browser is unsupported, use the Tampermonkey userscript fallback.");
+            "Immich Bridge is set up. The last step is adding the browser integration to Immich.\n\n1. Install the add-on for your browser.\n2. Enter your Immich URL in the add-on options page and approve access for that site.\n3. Add or change folder mappings for external libraries in the same options page.\n4. Refresh Immich and open an asset. The Immich Bridge button appears in the asset toolbar.\n\nIf your browser is unsupported, use the Tampermonkey userscript fallback. It needs the folder mapping set up here.");
 
         var openUserscriptButton = new Button { Text = "Open userscript fallback", AutoSize = true };
         openUserscriptButton.Click += (_, _) =>
@@ -484,6 +508,11 @@ public sealed class SetupWizardForm : Form
 
     private bool ValidateMappingFields()
     {
+        if (skipMappingBox.Checked)
+        {
+            return true;
+        }
+
         if (!TryDeriveMapping(true))
         {
             return false;
@@ -552,7 +581,25 @@ public sealed class SetupWizardForm : Form
     {
         try
         {
-            configService.Save(CreateConfigFromFields());
+            // Rerunning setup keeps apps, options, and the other mappings in an existing config.
+            if (!TryLoadExistingConfig(out var config))
+            {
+                return false;
+            }
+
+            if (!skipMappingBox.Checked)
+            {
+                var mapping = new PathMapping
+                {
+                    RemotePrefix = remotePrefixBox.Text.Trim(),
+                    LocalPrefix = localPrefixBox.Text.Trim()
+                };
+                config.Mappings.RemoveAll(existing => MappingRules.SameRemotePrefix(existing.RemotePrefix, mapping.RemotePrefix));
+                config.Mappings.Add(mapping);
+            }
+
+            configService.Save(config);
+
             var installedPath = install();
             var ranFromInstallFolder = string.Equals(
                 Path.GetFullPath(executablePath),
@@ -568,6 +615,26 @@ public sealed class SetupWizardForm : Form
         {
             MessageBox.Show(this, ex.Message, "Immich Bridge", MessageBoxButtons.OK, MessageBoxIcon.Error);
             return false;
+        }
+    }
+
+    private bool TryLoadExistingConfig(out BridgeConfig config)
+    {
+        try
+        {
+            config = configService.LoadOrCreate();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            var answer = MessageBox.Show(
+                this,
+                $"The existing Immich Bridge config can't be read:\n{ex.Message}\n\nReplace it with a new config? Any apps and mappings in it are lost.",
+                "Immich Bridge",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
+            config = configService.CreateDefaultConfig();
+            return answer == DialogResult.Yes;
         }
     }
 

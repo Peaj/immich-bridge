@@ -33,7 +33,9 @@ public sealed class SystemCheck
 
         if (config.Mappings.Count == 0)
         {
-            results.Add(CheckResult.Fail("Mappings", "At least one path mapping is required."));
+            // Photos in Immich's upload library work without mappings; external libraries need
+            // one, which the browser add-on's options page can add.
+            results.Add(CheckResult.Pass("Mappings", "No path mappings yet. Add them in the browser add-on's options page or with --setup to use external libraries."));
         }
         else
         {

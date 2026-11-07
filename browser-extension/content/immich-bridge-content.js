@@ -108,7 +108,8 @@
       if (reply && !reply.fallback) {
         showToast(reply.message || reply.error || 'Immich Bridge could not run this action.', {
           error: true,
-          updateLink: reply.code === 'unsupported-action'
+          updateLink: reply.code === 'unsupported-action',
+          setupPath: setupCodes.includes(reply.code) && canSetUpFolders() ? originalPath : null
         });
         return;
       }
@@ -122,6 +123,22 @@
     }
 
     window.location.href = `${protocol}://${action}?${query.toString()}`;
+  }
+
+  // Errors that a folder mapping fixes. The toast for them links to the options page, which
+  // can find the folder from this photo's path.
+  const setupCodes = ['not-mapped', 'not-configured', 'file-missing'];
+
+  function canSetUpFolders() {
+    return Boolean(companionStatus && companionStatus.connected && (companionStatus.features || []).includes('mappings'));
+  }
+
+  async function openFolderSetup(path) {
+    try {
+      await extensionApi.runtime.sendMessage({ type: 'immich-bridge:open-setup', path });
+    } catch (error) {
+      console.warn('[Immich Bridge] Unable to open the folder setup.', error);
+    }
   }
 
   async function runThroughCompanion(action, path) {
@@ -352,13 +369,25 @@
       toast.appendChild(link);
     }
 
+    if (options.setupPath) {
+      const setup = document.createElement('button');
+      setup.type = 'button';
+      setup.textContent = 'Set up folders';
+      setup.style.cssText = 'border:1px solid #fff;border-radius:6px;background:transparent;color:#fff;cursor:pointer;font:600 13px system-ui,sans-serif;padding:6px 10px;white-space:nowrap';
+      setup.addEventListener('click', () => {
+        toast.remove();
+        openFolderSetup(options.setupPath);
+      });
+      toast.appendChild(setup);
+    }
+
     toast.addEventListener('click', event => {
       if (event.target === toast) {
         toast.remove();
       }
     });
     document.body.appendChild(toast);
-    toastTimer = window.setTimeout(() => toast.remove(), options.error ? 8000 : 3000);
+    toastTimer = window.setTimeout(() => toast.remove(), options.setupPath ? 15000 : options.error ? 8000 : 3000);
   }
 
   function showButtonError(error) {

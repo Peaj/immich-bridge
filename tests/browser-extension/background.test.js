@@ -323,3 +323,43 @@ test('closes the native connection when the page goes away', async () => {
 
   assert.equal(background.nativePorts[0].disconnected, true);
 });
+
+test('opens the folder setup with the photo path from the configured Immich site', async () => {
+  const background = loadBackground({ immichOrigin });
+
+  const reply = await send(background, { type: 'immich-bridge:open-setup', path: '/external/photos/2024/img.jpg' }, immichTab);
+
+  assert.equal(reply.ok, true);
+  assert.equal(background.sessionStorage.setupSamplePath, '/external/photos/2024/img.jpg');
+  assert.equal(background.getOptionsOpenCount(), 1);
+});
+
+test('ignores folder setup requests from other sites', async () => {
+  const background = loadBackground({ immichOrigin });
+
+  const reply = await send(background, { type: 'immich-bridge:open-setup', path: '/external/img.jpg' }, {
+    id: 'extension-id',
+    tab: { id: 2 },
+    url: 'https://evil.example.com/'
+  });
+
+  assert.equal(reply.code, 'forbidden');
+  assert.equal(background.sessionStorage.setupSamplePath, undefined);
+  assert.equal(background.getOptionsOpenCount(), 0);
+});
+
+test('never relays mapping messages from Immich pages to the native host', async () => {
+  const background = loadBackground({ immichOrigin });
+
+  const direct = await send(background, { type: 'save-mappings', mappings: [] }, immichTab);
+  await send(background, { type: 'immich-bridge:run', action: 'save-mappings', path: '/x.jpg', mappings: [] }, immichTab);
+  const page = createPort('immich-bridge:copy', immichTab);
+  background.events.connect.dispatch(page);
+  await new Promise(resolve => setTimeout(resolve, 5));
+  page.onMessage.dispatch({ type: 'save-mappings', mappings: [{ remotePrefix: '/', localPrefix: 'C:\\' }] });
+
+  assert.equal(direct, undefined);
+  const forwarded = background.nativeMessages.map(entry => entry.message);
+  assert.deepEqual(JSON.parse(JSON.stringify(forwarded)), [{ type: 'run', action: 'save-mappings', path: '/x.jpg' }]);
+  assert.deepEqual(background.nativePorts[0].posted, []);
+});

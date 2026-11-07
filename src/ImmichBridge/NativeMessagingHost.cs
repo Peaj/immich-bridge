@@ -15,9 +15,9 @@ public interface IDetachedProcessStarter
 // one reply out, repeated until the browser closes stdin.
 public sealed class NativeMessagingHost
 {
-    public const int ProtocolVersion = 2;
+    public const int ProtocolVersion = 3;
     public static readonly string[] SupportedActions = ["reveal", "copy", "open"];
-    public static readonly string[] SupportedFeatures = ["copies"];
+    public static readonly string[] SupportedFeatures = ["copies", "mappings"];
     // Copy chunks carry up to 1 MiB of file data as base64, so messages stay well below this.
     private const int MaxIncomingMessageBytes = 4 * 1024 * 1024;
 
@@ -28,6 +28,7 @@ public sealed class NativeMessagingHost
     private readonly string executablePath;
     private readonly FileLogger logger;
     private readonly CopyStore copyStore;
+    private readonly MappingSuggester suggester;
     private CopyTransfer? transfer;
 
     public NativeMessagingHost(
@@ -36,7 +37,8 @@ public sealed class NativeMessagingHost
         IDetachedProcessStarter processStarter,
         string executablePath,
         FileLogger? logger = null,
-        CopyStore? copyStore = null)
+        CopyStore? copyStore = null,
+        MappingSuggester? suggester = null)
     {
         configService = new ConfigService(configLoader.ConfigPath);
         resolver = new LocalPathResolver(configLoader);
@@ -45,6 +47,7 @@ public sealed class NativeMessagingHost
         this.executablePath = executablePath;
         this.logger = logger ?? new FileLogger();
         this.copyStore = copyStore ?? new CopyStore();
+        this.suggester = suggester ?? new MappingSuggester();
     }
 
     public static bool IsHostLaunch(string[] args)
@@ -92,6 +95,10 @@ public sealed class NativeMessagingHost
                 "copy-start" => StartCopy(request),
                 "copy-chunk" => AppendCopy(request),
                 "copy-end" => FinishCopy(),
+                "get-mappings" => GetMappings(),
+                "suggest-mapping" => SuggestMapping(request),
+                "check-mapping" => CheckMapping(request),
+                "save-mappings" => SaveMappings(request),
                 var type => Failure("unsupported-message", $"Unsupported message type '{type}'.")
             };
         }
@@ -193,6 +200,131 @@ public sealed class NativeMessagingHost
 
     private sealed record CopyTransfer(string Purpose, string Path, long? ExpectedSize, FileStream Stream);
 
+    // The mapping messages come only from the add-on's own options page: the background
+    // script relays nothing but "run" and the copy messages from Immich pages, so a web page
+    // can never read or change the mappings.
+    private JsonObject GetMappings()
+    {
+        var configExists = File.Exists(configService.ConfigPath);
+        BridgeConfig config;
+        try
+        {
+            config = configService.LoadOrCreate();
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException)
+        {
+            logger.Error(ex);
+            return Failure("config-invalid", $"The Immich Bridge config file can't be read: {ex.Message}");
+        }
+
+        var mappings = new JsonArray(config.Mappings
+            .Select(mapping => (JsonNode)new JsonObject
+            {
+                ["remotePrefix"] = mapping.RemotePrefix,
+                ["localPrefix"] = mapping.LocalPrefix,
+                ["exists"] = Directory.Exists(Environment.ExpandEnvironmentVariables(mapping.LocalPrefix))
+            })
+            .ToArray());
+        return new JsonObject { ["ok"] = true, ["configExists"] = configExists, ["mappings"] = mappings };
+    }
+
+    private JsonObject SuggestMapping(JsonObject request)
+    {
+        try
+        {
+            var suggestions = suggester.Suggest(request["path"]?.GetValue<string>() ?? string.Empty);
+            logger.Info($"Found {suggestions.Count} mapping suggestion(s).");
+            return new JsonObject
+            {
+                ["ok"] = true,
+                ["suggestions"] = new JsonArray(suggestions
+                    .Select(suggestion => (JsonNode)new JsonObject
+                    {
+                        ["remotePrefix"] = suggestion.RemotePrefix,
+                        ["localPrefix"] = suggestion.LocalPrefix,
+                        ["localPath"] = suggestion.LocalPath
+                    })
+                    .ToArray())
+            };
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Failure("invalid-path", ex.Message);
+        }
+    }
+
+    private JsonObject CheckMapping(JsonObject request)
+    {
+        List<PathMapping> mappings;
+        try
+        {
+            mappings = MappingRules.Normalize(ReadMappings(request));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Failure("invalid-mapping", ex.Message);
+        }
+
+        var remotePath = request["path"]?.GetValue<string>() ?? string.Empty;
+        try
+        {
+            var localPath = new PathMapper(new BridgeConfig { Mappings = mappings }).MapPath(remotePath);
+            return new JsonObject { ["ok"] = true, ["localPath"] = localPath, ["exists"] = File.Exists(localPath) };
+        }
+        catch (Exception ex) when (ex is PathNotMappedException or ArgumentException)
+        {
+            return Failure("not-mapped", ex.Message);
+        }
+    }
+
+    private JsonObject SaveMappings(JsonObject request)
+    {
+        List<PathMapping> mappings;
+        try
+        {
+            mappings = MappingRules.Normalize(ReadMappings(request));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Failure("invalid-mapping", ex.Message);
+        }
+
+        try
+        {
+            configService.SaveMappings(mappings);
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException)
+        {
+            logger.Error(ex);
+            return Failure("config-invalid", $"The Immich Bridge config file can't be read, so it was left unchanged: {ex.Message}");
+        }
+
+        logger.Info($"Saved {mappings.Count} mapping(s) from the browser add-on.");
+        return GetMappings();
+    }
+
+    private static List<PathMapping> ReadMappings(JsonObject request)
+    {
+        if (request["mappings"] is not JsonArray items)
+        {
+            throw new InvalidOperationException("The message has no mappings.");
+        }
+
+        if (items.Count > MappingRules.MaxMappings)
+        {
+            throw new InvalidOperationException($"Immich Bridge supports up to {MappingRules.MaxMappings} mappings.");
+        }
+
+        return items
+            .Select(item => item as JsonObject ?? throw new InvalidOperationException("Each mapping must be an object."))
+            .Select(item => new PathMapping
+            {
+                RemotePrefix = item["remotePrefix"]?.GetValue<string>() ?? string.Empty,
+                LocalPrefix = item["localPrefix"]?.GetValue<string>() ?? string.Empty
+            })
+            .ToList();
+    }
+
     public static string? ReadMessage(Stream input)
     {
         Span<byte> header = stackalloc byte[4];
@@ -275,7 +407,7 @@ public sealed class NativeMessagingHost
             return ex switch
             {
                 UnsupportedActionException => Failure("unsupported-action", ex.Message),
-                ConfigNotFoundException => Failure("not-configured", "Immich Bridge is not set up yet. Run its setup on this computer."),
+                ConfigNotFoundException => Failure("not-configured", "Immich Bridge has no folders set up yet. Set them up in the add-on's options page or by running Immich Bridge from the Start menu."),
                 PathNotMappedException => Failure("not-mapped", ex.Message),
                 FileNotFoundException => Failure("file-missing", ex.Message),
                 _ => Failure("failed", ex.Message)

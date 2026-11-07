@@ -164,6 +164,129 @@ button.secondary:hover {
   display: none;
 }
 
+.folders {
+  margin-top: 24px;
+  padding-top: 22px;
+  border-top: 1px solid #d9e0ea;
+}
+
+.folders[hidden] {
+  display: none;
+}
+
+.folders h2 {
+  margin: 0 0 6px;
+  font-size: 17px;
+  font-weight: 650;
+}
+
+.section-intro,
+.hint {
+  margin: 0 0 14px;
+  max-width: 68ch;
+  color: #4a5568;
+}
+
+.hint {
+  font-size: 13px;
+}
+
+.hint[hidden],
+.suggestions[hidden] {
+  display: none;
+}
+
+.finder {
+  margin-bottom: 20px;
+}
+
+.finder .hint {
+  margin-bottom: 8px;
+}
+
+.suggestions {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.suggestion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 12px;
+  border: 1px solid #b8d4ff;
+  border-radius: 6px;
+  background: #eef5ff;
+}
+
+.suggestion-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.suggestion-text strong {
+  display: block;
+}
+
+.suggestion-text span {
+  color: #4a5568;
+  font-size: 13px;
+}
+
+.suggestion button {
+  flex: 0 0 auto;
+}
+
+.mapping-header,
+.mapping-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.mapping-header {
+  margin-bottom: 6px;
+  color: #4a5568;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.mapping-list {
+  display: grid;
+  gap: 8px;
+}
+
+.mapping-row input {
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 13px;
+}
+
+.mapping-row.missing .local {
+  border-color: #c2410c;
+}
+
+.mapping-warning {
+  grid-column: 2 / 4;
+  margin: -2px 0 2px;
+  color: #c2410c;
+  font-size: 13px;
+}
+
+button.remove {
+  min-width: 42px;
+  padding: 8px 12px;
+}
+
+button:disabled {
+  cursor: progress;
+  opacity: .6;
+}
+
 .privacy-note,
 .disclaimer {
   margin: 22px 0 0;
@@ -200,6 +323,29 @@ button.secondary:hover {
   }
 
   .field-row {
+    flex-direction: column;
+  }
+
+  .mapping-header {
+    display: none;
+  }
+
+  .mapping-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #d9e0ea;
+  }
+
+  .mapping-row .remote {
+    grid-column: 1 / 3;
+  }
+
+  .mapping-warning {
+    grid-column: 1 / 3;
+  }
+
+  .suggestion {
+    align-items: stretch;
     flex-direction: column;
   }
 
@@ -259,5 +405,38 @@ button.secondary:hover {
   .privacy-note,
   .disclaimer {
     color: #94a3b8;
+  }
+
+  .folders,
+  .mapping-row {
+    border-color: #374151;
+  }
+
+  .status {
+    color: #86efac;
+  }
+
+  .status.error {
+    color: #fca5a5;
+  }
+
+  .section-intro,
+  .hint,
+  .mapping-header,
+  .suggestion-text span {
+    color: #cbd5e1;
+  }
+
+  .suggestion {
+    border-color: #31547f;
+    background: #14243a;
+  }
+
+  .mapping-row.missing .local {
+    border-color: #fb923c;
+  }
+
+  .mapping-warning {
+    color: #fb923c;
   }
 }
